@@ -194,6 +194,32 @@ AI Tutor is architected to run client-side eye and face tracking completely offl
 
 ---
 
+## Gaze Estimation
+
+AI Tutor transforms raw facial and iris landmarks into a stable, low-latency gaze control vector for hands-free UI interaction:
+
+### Pipeline Architecture
+1. **Local Eye Coordinate Projection:**
+   - For each eye, the iris center is projected onto the corner-to-corner horizontal axis and eyelid vertical axis.
+   - Normalizing relative to the eye's anatomical geometry ensures stable gaze estimation invariant to head tilts.
+2. **Head Pose Extraction:**
+   - Euler angles (yaw, pitch, roll) are computed directly from the facial transformation matrix to distinguish between eye movement and head rotation.
+3. **Blink & EAR Detection:**
+   - Eye Aspect Ratio (EAR) detects blinks and eye closures with debouncing.
+   - During blinks, gaze feature outputs are temporarily held at the last known valid state to prevent UI jumping.
+4. **Adaptive Signal Smoothing (1€ Filter):**
+   - A One Euro (1€) filter reduces jitter at low speeds while maintaining instant responsiveness during saccadic eye movements.
+5. **Coarse Direction & Baseline Calibration:**
+   - Classifies user gaze into `left`, `right`, `up`, `down`, and `center` with dead-zones and multi-frame hysteresis.
+   - A quick 2-second "Set Center" calibration customizes the neutral baseline for individual student eye shapes and seating positions.
+
+### Known Limitations
+- **Webcam Resolution & Distance:** Best results occur when seated 40–70 cm from standard 720p/1080p webcams.
+- **Lighting Conditions:** Extreme backlighting or deep facial shadows can degrade MediaPipe landmark accuracy.
+- **Glasses & Reflections:** Strong glare or thick frames may occasionally occlude iris boundaries; diffuse front lighting is recommended.
+
+---
+
 ## Data Sources and Usage
 
 - **Curriculum Textbooks:** School textbooks for Tamil Nadu State Board (SCERT) and CBSE / NCERT (Standards 6 through 12) are **NOT** included in this repository.

@@ -17,7 +17,7 @@ import {
   RIGHT_EYELID_UPPER,
   RIGHT_EYELID_LOWER,
   buildContourConnections,
-} from "./landmarks.ts";
+} from "./landmarks";
 
 test("Landmark definitions consistency", () => {
   // Total landmark count must be 478

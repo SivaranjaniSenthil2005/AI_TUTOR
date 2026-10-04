@@ -10,11 +10,15 @@ import React, {
 import type { NormalizedLandmark, FaceLandmarkerResult } from "@mediapipe/tasks-vision";
 import { useWebcam, WebcamStatus } from "@/hooks/useWebcam";
 import { useFaceLandmarks, LandmarkStatus } from "@/hooks/useFaceLandmarks";
+import { useGaze, GazeFrameState } from "@/hooks/useGaze";
+import type { GazeDirection } from "@/lib/gaze/direction";
 import { LandmarkOverlay } from "./LandmarkOverlay";
+import { GazeDebugPanel } from "./GazeDebugPanel";
 
 export interface WebcamViewProps {
   onReady?: (videoEl: HTMLVideoElement) => void;
   onLandmarksUpdate?: (landmarks: NormalizedLandmark[] | null) => void;
+  onGazeUpdate?: (gazeState: GazeFrameState) => void;
   className?: string;
 }
 
@@ -23,12 +27,14 @@ export interface WebcamViewHandle {
   stop: () => void;
   webcamStatus: WebcamStatus;
   landmarkStatus: LandmarkStatus;
+  direction: GazeDirection;
   getVideoElement: () => HTMLVideoElement | null;
   getLatestResult: () => FaceLandmarkerResult | null;
+  getLatestGaze: () => GazeFrameState;
 }
 
 export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
-  function WebcamView({ onReady, onLandmarksUpdate, className = "" }, ref) {
+  function WebcamView({ onReady, onLandmarksUpdate, onGazeUpdate, className = "" }, ref) {
     const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const [currentLandmarks, setCurrentLandmarks] = useState<NormalizedLandmark[] | null>(null);
     const [showOverlay, setShowOverlay] = useState<boolean>(true);
@@ -36,6 +42,40 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
 
     const onLandmarksUpdateRef = useRef(onLandmarksUpdate);
     onLandmarksUpdateRef.current = onLandmarksUpdate;
+
+    const onGazeUpdateRef = useRef(onGazeUpdate);
+    onGazeUpdateRef.current = onGazeUpdate;
+
+    // Gaze estimation hook
+    const {
+      gazeRef,
+      direction,
+      confidence,
+      isBlinking,
+      faceVisible,
+      baseline,
+      isCalibratingCenter,
+      calibrationProgress,
+      calibrationMessage,
+      minCutoff,
+      beta,
+      thresholdX,
+      thresholdY,
+      setMinCutoff,
+      setBeta,
+      setThresholdX,
+      setThresholdY,
+      history,
+      processFrame,
+      startSetCenter,
+      resetBaseline,
+    } = useGaze({
+      onGazeFrame: (frame) => {
+        if (onGazeUpdateRef.current) {
+          onGazeUpdateRef.current(frame);
+        }
+      },
+    });
 
     const handleVideoReady = useCallback(
       (videoEl: HTMLVideoElement) => {
@@ -61,21 +101,30 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
     });
 
     const handleLandmarkResults = useCallback(
-      (result: FaceLandmarkerResult) => {
+      (result: FaceLandmarkerResult, timestampMs: number) => {
         if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
           const primaryFace = result.faceLandmarks[0];
+          const matrix =
+            result.facialTransformationMatrixes &&
+            result.facialTransformationMatrixes.length > 0
+              ? result.facialTransformationMatrixes[0].data
+              : undefined;
+
           setCurrentLandmarks(primaryFace);
+          processFrame(primaryFace, matrix, timestampMs);
+
           if (onLandmarksUpdateRef.current) {
             onLandmarksUpdateRef.current(primaryFace);
           }
         } else {
           setCurrentLandmarks(null);
+          processFrame(null, undefined, timestampMs);
           if (onLandmarksUpdateRef.current) {
             onLandmarksUpdateRef.current(null);
           }
         }
       },
-      []
+      [processFrame]
     );
 
     const {
@@ -102,8 +151,10 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
       stop,
       webcamStatus,
       landmarkStatus,
+      direction,
       getVideoElement: () => videoRef.current,
       getLatestResult: () => latestResultRef.current,
+      getLatestGaze: () => gazeRef.current,
     }));
 
     return (
@@ -144,7 +195,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
             <span className="text-xs sm:text-sm font-bold capitalize text-slate-200">
               {webcamStatus === "active"
                 ? isFaceDetected
-                  ? "Tracking Face"
+                  ? `Gaze: ${direction.toUpperCase()}`
                   : "Searching Face"
                 : webcamStatus === "requesting"
                 ? "Starting..."
@@ -180,6 +231,23 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
               videoElement={videoElement}
               visible={showOverlay}
             />
+          )}
+
+          {/* Live Gaze Direction Bubble Indicator Over Video */}
+          {webcamStatus === "active" && isFaceDetected && (
+            <div className="absolute top-3 left-3 bg-[#0d1527]/90 backdrop-blur-md border-2 border-amber-400/80 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg select-none">
+              <span className="text-base">
+                {direction === "left" && "◀"}
+                {direction === "right" && "▶"}
+                {direction === "up" && "▲"}
+                {direction === "down" && "▼"}
+                {direction === "center" && "●"}
+                {direction === "unknown" && "❓"}
+              </span>
+              <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                {direction}
+              </span>
+            </div>
           )}
 
           {/* Idle State Overlay */}
@@ -240,9 +308,19 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
               </div>
             )}
             {landmarkStatus === "tracking" && (
-              <div className="p-3 bg-emerald-950/80 border-2 border-emerald-500/60 rounded-xl text-emerald-200 font-black text-xl flex items-center gap-3 shadow-[0_0_15px_rgba(52,211,153,0.15)]">
-                <span className="text-2xl">✨</span>
-                <span>I can see you!</span>
+              <div className="p-3 bg-emerald-950/80 border-2 border-emerald-500/60 rounded-xl text-emerald-200 font-black text-xl flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(52,211,153,0.15)]">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✨</span>
+                  <span>I can see you!</span>
+                </div>
+                <button
+                  onClick={startSetCenter}
+                  disabled={isCalibratingCenter}
+                  className="px-3 py-1 bg-emerald-900 hover:bg-emerald-800 text-emerald-100 text-xs font-bold rounded-lg border border-emerald-400 cursor-pointer"
+                  title="Calibrate neutral center gaze"
+                >
+                  🎯 Calibrate Center
+                </button>
               </div>
             )}
             {(landmarkStatus === "no-face" || landmarkStatus === "ready") && (
@@ -290,19 +368,36 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
                 onChange={(e) => setShowDebug(e.target.checked)}
                 className="w-4 h-4 accent-amber-400 rounded cursor-pointer"
               />
-              <span>Debug</span>
+              <span>Debug / Tuner</span>
             </label>
           </div>
         )}
 
-        {/* Debug Line (Hidden behind Debug toggle) */}
+        {/* Comprehensive Debug & Tuner Panel (Hidden behind Debug toggle) */}
         {showDebug && webcamStatus === "active" && (
-          <div className="mt-2 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs font-mono text-emerald-400 flex flex-wrap gap-4">
-            <span>FPS: {fps}</span>
-            <span>Face detected: {isFaceDetected ? "YES" : "NO"}</span>
-            <span>Landmarks: {currentLandmarks ? `${currentLandmarks.length} pts` : "0"}</span>
-            <span>Status: {landmarkStatus}</span>
-          </div>
+          <GazeDebugPanel
+            fps={fps}
+            direction={direction}
+            confidence={confidence}
+            isBlinking={isBlinking}
+            faceVisible={faceVisible}
+            baseline={baseline}
+            latestGaze={gazeRef.current}
+            history={history}
+            minCutoff={minCutoff}
+            beta={beta}
+            thresholdX={thresholdX}
+            thresholdY={thresholdY}
+            onMinCutoffChange={setMinCutoff}
+            onBetaChange={setBeta}
+            onThresholdXChange={setThresholdX}
+            onThresholdYChange={setThresholdY}
+            onSetCenter={startSetCenter}
+            onResetBaseline={resetBaseline}
+            isCalibratingCenter={isCalibratingCenter}
+            calibrationProgress={calibrationProgress}
+            calibrationMessage={calibrationMessage}
+          />
         )}
 
         {/* Primary Action Button (min 64px height) */}

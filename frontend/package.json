@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test lib/landmarks.test.ts"
+    "test": "tsx --test lib/landmarks.test.ts lib/gaze/gaze.test.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
@@ -23,6 +23,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
