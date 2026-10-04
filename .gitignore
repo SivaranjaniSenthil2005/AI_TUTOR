@@ -1,0 +1,54 @@
+# Environments & Secrets
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+.npm
+*.tsbuildinfo
+next-env.d.ts
+
+# Data & Storage
+data/raw/**
+!data/raw/
+!data/raw/*/
+!data/raw/**/.gitkeep
+data/processed/**
+!data/processed/
+!data/processed/*/
+!data/processed/**/.gitkeep
+data/**/*.pdf
+*.pdf
+chroma/
+chroma_db/
+.chroma/
+chroma_data/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
