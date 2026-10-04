@@ -167,11 +167,30 @@ ai_tutor/
    npm install
    ```
 
-3. Start the Next.js development server:
+3. Download MediaPipe models and assets (self-hosted):
+   ```bash
+   # Linux / macOS
+   bash ../scripts/download_models.sh
+
+   # Windows (PowerShell)
+   powershell -ExecutionPolicy Bypass -File ..\scripts\download_models.ps1
+   ```
+   *This downloads `face_landmarker.task` (~29 MB) into `frontend/public/models/` for local client-side execution.*
+
+4. Start the Next.js development server:
    ```bash
    npm run dev
    ```
    Open `http://localhost:3000` in your browser.
+
+---
+
+## Models and Assets
+
+AI Tutor is architected to run client-side eye and face tracking completely offline in the browser without external CDN dependencies at runtime:
+- **MediaPipe WASM Engine:** Pre-bundled in `frontend/public/mediapipe/wasm/`.
+- **Face Landmarker Task Model:** The official MediaPipe `face_landmarker.task` model provides 478 3D landmarks (including 10 iris tracking points).
+- **Download Automation:** Run `scripts/download_models.sh` (or `scripts/download_models.ps1` on Windows) to automatically fetch and place the model into `frontend/public/models/`. The model file is gitignored to keep the repository lightweight.
 
 ---
 

@@ -45,6 +45,11 @@ chroma_db/
 .chroma/
 chroma_data/
 
+# Machine Learning Models & Task Binaries
+frontend/public/models/*
+!frontend/public/models/.gitkeep
+*.task
+
 # OS and IDE files
 .DS_Store
 Thumbs.db
