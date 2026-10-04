@@ -220,6 +220,45 @@ AI Tutor transforms raw facial and iris landmarks into a stable, low-latency gaz
 
 ---
 
+## Calibration & Gaze-to-Screen Mapping
+
+AI Tutor translates real-time gaze features (iris position, head yaw/pitch, and 2nd-degree polynomial interaction terms) into continuous normalized screen viewport coordinates `(x, y)` through a personalized calibration model.
+
+### How Calibration Works
+1. **Interactive Fullscreen Protocol:**
+   - The user is guided through an automated 9-point training grid across screen corners, edges, and center.
+   - Each target displays a shrinking circular guide animation with a ~700 ms settling period to let the user's eyes fixate before recording ~30 valid frames.
+   - Outliers and blink artifacts are rejected in real-time, taking the robust median feature vector for each training point.
+2. **Ridge Regression (L2 Regularization):**
+   - High-dimensional polynomial features (linear terms + quadratic iris squares + iris cross product) are fitted to screen coordinates using closed-form Ridge Regression solved with Gaussian elimination and partial pivoting.
+   - Optimal regularization parameter $\lambda$ is automatically selected across candidate values.
+3. **5-Point Independent Validation:**
+   - 5 unseen validation coordinates measure true generalization precision (Mean Error & P90 Error as % of screen diagonal and equivalent pixels).
+   - Calibrations are graded automatically:
+     - **Good:** Mean error $< 8\%$ of screen diagonal (high precision)
+     - **Okay:** Mean error $< 15\%$ of screen diagonal (usable for medium-large targets)
+     - **Poor:** Mean error $\ge 15\%$ of screen diagonal (recalibration recommended with lighting/posture tips)
+4. **Adaptive 1€ Screen Smoothing & Gaze Dot:**
+   - Live predicted screen points are filtered with an adaptive One Euro filter, maintaining smooth fixation stability while preserving rapid saccadic transitions.
+   - A lightweight, hardware-accelerated fixed gaze dot overlay (`GazeDot`) renders the current gaze location using `requestAnimationFrame`.
+5. **Persistence & Viewport Drift Detection:**
+   - Calibration weights and calibration viewport dimensions are stored in browser `localStorage`.
+   - If the window or display resolution changes by more than 15%, the user is gently notified to recalibrate for optimal mapping accuracy.
+
+### Tips for Good Calibration
+- **Lighting:** Ensure even, diffuse lighting in front of your face. Avoid strong backlights or lamps directly behind you.
+- **Camera Position:** Keep your webcam at or near eye level, centered above your display.
+- **Distance:** Sit upright at a comfortable arm's length (~50–65 cm) from the screen.
+- **Head Stability:** Keep your head fairly steady during calibration; let your eyes move naturally to track the dot.
+- **Glasses:** Angle your screen or adjust room lights to minimize reflections and glare on lenses.
+- **Fullscreen Mode:** Calibrate in browser fullscreen (`F11` or via the Fullscreen button) to maximize screen area mapping.
+
+### Honest Limitations
+- **Region-Level Accuracy:** Webcam-based eye tracking without infrared hardware typically achieves an accuracy of ~5–10% of screen diagonal (a region or quadrant of the screen, not single-pixel precision).
+- **Target Design:** Consequently, AI Tutor's user interface is purposefully designed with large, high-contrast interactive targets and forgiving dwell zones rather than small desktop buttons.
+
+---
+
 ## Data Sources and Usage
 
 - **Curriculum Textbooks:** School textbooks for Tamil Nadu State Board (SCERT) and CBSE / NCERT (Standards 6 through 12) are **NOT** included in this repository.

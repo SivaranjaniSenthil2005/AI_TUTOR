@@ -5,8 +5,10 @@ import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { extractEyeFeatures, EyeGazeFeatures } from "@/lib/gaze/eyeFeatures";
 import { extractHeadPose, HeadPose } from "@/lib/gaze/headPose";
 import { BlinkDetector, computeEyeAspectRatios } from "@/lib/gaze/blink";
-import { GazeFeatureSmoother, GazeFeaturesVector } from "@/lib/gaze/smoothing";
+import { GazeFeatureSmoother, type GazeFeaturesVector } from "@/lib/gaze/smoothing";
 import { DirectionClassifier, GazeDirection, GazeBaseline, DEFAULT_BASELINE } from "@/lib/gaze/direction";
+
+export type { GazeFeaturesVector };
 
 export interface GazeFrameState {
   features: GazeFeaturesVector;

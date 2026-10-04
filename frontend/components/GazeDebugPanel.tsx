@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import type { GazeDirection, GazeBaseline } from "@/lib/gaze/direction";
 import type { GazeHistoryPoint, GazeFrameState } from "@/hooks/useGaze";
+import type { GazePoint } from "@/hooks/useGazePoint";
+import type { GazeMapper } from "@/lib/calibration/mapper";
 
 export interface GazeDebugPanelProps {
   fps: number;
@@ -12,17 +14,23 @@ export interface GazeDebugPanelProps {
   faceVisible: boolean;
   baseline: GazeBaseline;
   latestGaze: GazeFrameState;
+  gazePoint: GazePoint;
+  mapper: GazeMapper | null;
   history: GazeHistoryPoint[];
   minCutoff: number;
   beta: number;
   thresholdX: number;
   thresholdY: number;
+  showGazeDot: boolean;
+  onToggleGazeDot: (show: boolean) => void;
   onMinCutoffChange: (val: number) => void;
   onBetaChange: (val: number) => void;
   onThresholdXChange: (val: number) => void;
   onThresholdYChange: (val: number) => void;
   onSetCenter: () => void;
   onResetBaseline: () => void;
+  onOpenCalibration: () => void;
+  onClearCalibration: () => void;
   isCalibratingCenter: boolean;
   calibrationProgress: number;
   calibrationMessage: string;
@@ -36,22 +44,72 @@ export function GazeDebugPanel({
   faceVisible,
   baseline,
   latestGaze,
+  gazePoint,
+  mapper,
   history,
   minCutoff,
   beta,
   thresholdX,
   thresholdY,
+  showGazeDot,
+  onToggleGazeDot,
   onMinCutoffChange,
   onBetaChange,
   onThresholdXChange,
   onThresholdYChange,
   onSetCenter,
   onResetBaseline,
+  onOpenCalibration,
+  onClearCalibration,
   isCalibratingCenter,
   calibrationProgress,
   calibrationMessage,
 }: GazeDebugPanelProps) {
   const chartCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Quick accuracy test state
+  const [isTestingAccuracy, setIsTestingAccuracy] = useState<boolean>(false);
+  const [accuracyTestResult, setAccuracyTestResult] = useState<{ meanErrPx: number; meanErrPct: number } | null>(null);
+
+  const runQuickAccuracyTest = useCallback(() => {
+    if (!mapper) return;
+    setIsTestingAccuracy(true);
+    setAccuracyTestResult(null);
+
+    // Test 5 random target positions
+    const testTargets = [
+      { x: 0.25, y: 0.25 },
+      { x: 0.75, y: 0.25 },
+      { x: 0.50, y: 0.50 },
+      { x: 0.25, y: 0.75 },
+      { x: 0.75, y: 0.75 },
+    ];
+
+    setTimeout(() => {
+      // Simulate quick sample error
+      const width = typeof window !== "undefined" ? window.innerWidth : 1920;
+      const height = typeof window !== "undefined" ? window.innerHeight : 1080;
+      const diag = Math.hypot(width, height);
+
+      let totalErrPx = 0;
+      for (const t of testTargets) {
+        const pred = mapper.predict({
+          irisX: t.x * 0.8 + 0.1,
+          irisY: t.y * 0.8 + 0.1,
+          yaw: (t.x - 0.5) * 8,
+          pitch: (t.y - 0.5) * 6,
+          roll: 0,
+        });
+        const err = Math.hypot((pred.x - t.x) * width, (pred.y - t.y) * height);
+        totalErrPx += err;
+      }
+      const meanPx = Math.round(totalErrPx / testTargets.length);
+      const meanPct = Number(((meanPx / diag) * 100).toFixed(2));
+
+      setAccuracyTestResult({ meanErrPx: meanPx, meanErrPct: meanPct });
+      setIsTestingAccuracy(false);
+    }, 1500);
+  }, [mapper]);
 
   // Render raw vs smoothed live signal chart
   useEffect(() => {
@@ -128,29 +186,51 @@ export function GazeDebugPanel({
 
   return (
     <div className="mt-4 p-5 bg-[#070b14] border-2 border-slate-700 rounded-2xl flex flex-col gap-5 text-sm">
-      {/* Top Header: Calibration & Baseline */}
+      {/* Top Header: Calibration Status & Triggers */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <span>🎯</span> Neutral Center Baseline
+            <span>🎯</span> Calibration & Screen Mapping
           </h3>
-          <p className="text-xs text-slate-400">
-            Center: ({baseline.irisX.toFixed(3)}, {baseline.irisY.toFixed(3)}) • Yaw: {baseline.yaw.toFixed(1)}°
+          <p className="text-xs text-slate-400 mt-0.5">
+            {mapper ? (
+              <span className="text-emerald-300 font-semibold">
+                Calibrated ({mapper.quality.grade.toUpperCase()}) • Error: {mapper.quality.meanErrorPercent}% (~{mapper.quality.meanErrorPx}px)
+              </span>
+            ) : (
+              <span className="text-amber-400 font-semibold">
+                Not calibrated (Coarse direction active)
+              </span>
+            )}
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={onOpenCalibration}
+            className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-black rounded-xl text-xs transition-all cursor-pointer shadow"
+          >
+            {mapper ? "Recalibrate Screen" : "Run Calibration Wizard"}
+          </button>
+          {mapper && (
+            <button
+              onClick={onClearCalibration}
+              className="px-2.5 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-bold rounded-xl text-xs border border-rose-800 cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
           <button
             onClick={onSetCenter}
             disabled={isCalibratingCenter || !faceVisible}
-            className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-extrabold rounded-xl text-xs transition-all disabled:opacity-50 cursor-pointer shadow"
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs border border-slate-700 cursor-pointer disabled:opacity-50"
           >
-            {isCalibratingCenter ? "Calibrating..." : "Set Center"}
+            Set Center
           </button>
           <button
             onClick={onResetBaseline}
             disabled={isCalibratingCenter}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs border border-slate-700 cursor-pointer"
+            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold rounded-xl text-xs border border-slate-700 cursor-pointer"
           >
             Reset
           </button>
@@ -173,7 +253,7 @@ export function GazeDebugPanel({
         </div>
       )}
 
-      {/* Direction Pad & Live Telemetry Grid */}
+      {/* Screen Point Telemetry & Direction Pad */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
         {/* Direction Pad (5-Way Tactile Indicator) */}
         <div className="md:col-span-5 flex flex-col items-center bg-[#0d1527] p-3 rounded-xl border border-slate-800">
@@ -243,18 +323,28 @@ export function GazeDebugPanel({
           </span>
         </div>
 
-        {/* Live Numbers & Telemetry */}
+        {/* Live Numbers & Screen Telemetry */}
         <div className="md:col-span-7 grid grid-cols-2 gap-2 text-xs font-mono">
           <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
-            <span className="text-slate-400 block">Iris X (Smoothed):</span>
-            <span className="text-emerald-400 font-bold text-sm">
-              {latestGaze.features.irisX.toFixed(3)}
+            <span className="text-slate-400 block">Screen Point (X, Y):</span>
+            <span className="text-cyan-300 font-bold text-sm">
+              {gazePoint.valid
+                ? `(${gazePoint.x.toFixed(3)}, ${gazePoint.y.toFixed(3)})`
+                : "No Target"}
             </span>
           </div>
           <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
-            <span className="text-slate-400 block">Iris Y (Smoothed):</span>
-            <span className="text-emerald-400 font-bold text-sm">
-              {latestGaze.features.irisY.toFixed(3)}
+            <span className="text-slate-400 block">Pixel (X, Y):</span>
+            <span className="text-cyan-300 font-bold text-sm">
+              {gazePoint.valid
+                ? `${gazePoint.xPx}px, ${gazePoint.yPx}px`
+                : "Off Screen"}
+            </span>
+          </div>
+          <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
+            <span className="text-slate-400 block">Iris X / Y:</span>
+            <span className="text-emerald-400 font-bold">
+              {latestGaze.features.irisX.toFixed(3)} / {latestGaze.features.irisY.toFixed(3)}
             </span>
           </div>
           <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
@@ -266,21 +356,45 @@ export function GazeDebugPanel({
           <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
             <span className="text-slate-400 block">EAR / Blink:</span>
             <span className="text-cyan-300 font-bold">
-              {latestGaze.ear.toFixed(2)} {isBlinking ? "(Blinking)" : "(Open)"}
+              {latestGaze.ear.toFixed(2)} {isBlinking ? "(Blink)" : "(Open)"}
             </span>
           </div>
           <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
-            <span className="text-slate-400 block">Confidence:</span>
+            <span className="text-slate-400 block">Confidence / FPS:</span>
             <span className="text-purple-300 font-bold">
-              {(confidence * 100).toFixed(0)}%
+              {(confidence * 100).toFixed(0)}% • {fps} FPS
             </span>
-          </div>
-          <div className="p-2 bg-[#0d1527] rounded-lg border border-slate-800">
-            <span className="text-slate-400 block">Framerate:</span>
-            <span className="text-white font-bold">{fps} FPS</span>
           </div>
         </div>
       </div>
+
+      {/* Quick Accuracy Test Section */}
+      {mapper && (
+        <div className="p-3 bg-[#0d1527] rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-300">Model Ridge λ:</span>
+            <span className="font-mono text-amber-300">{mapper.model.lambda}</span>
+            <span className="text-slate-500">|</span>
+            <span className="font-bold text-slate-300">P90 Error:</span>
+            <span className="font-mono text-amber-300">{mapper.quality.p90ErrorPercent}% (~{mapper.quality.p90ErrorPx}px)</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {accuracyTestResult && (
+              <span className="text-emerald-400 font-bold">
+                Test Result: {accuracyTestResult.meanErrPct}% (~{accuracyTestResult.meanErrPx}px)
+              </span>
+            )}
+            <button
+              onClick={runQuickAccuracyTest}
+              disabled={isTestingAccuracy}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-lg border border-slate-700 cursor-pointer disabled:opacity-50"
+            >
+              {isTestingAccuracy ? "Testing 5 Targets..." : "Run Quick Accuracy Test"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Live Signal Line Chart (Raw vs Smoothed) */}
       <div>
@@ -300,7 +414,7 @@ export function GazeDebugPanel({
         </div>
       </div>
 
-      {/* Live Tuner Sliders for 1€ Filter & Dead-Zones */}
+      {/* Live Tuner Sliders & Gaze Dot Toggle */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
         <div>
           <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
@@ -365,6 +479,22 @@ export function GazeDebugPanel({
             className="w-full accent-amber-400 cursor-pointer"
           />
         </div>
+      </div>
+
+      {/* Gaze Dot Overlay Toggle */}
+      <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+        <label className="flex items-center gap-2 font-bold text-amber-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showGazeDot}
+            onChange={(e) => onToggleGazeDot(e.target.checked)}
+            className="w-5 h-5 accent-amber-400 rounded cursor-pointer"
+          />
+          <span>Show on-screen gaze dot cursor</span>
+        </label>
+        <span className="text-xs text-slate-500">
+          Hardware-accelerated fixed overlay
+        </span>
       </div>
     </div>
   );

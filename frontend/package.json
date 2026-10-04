@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/landmarks.test.ts lib/gaze/gaze.test.ts"
+    "test": "tsx --test lib/landmarks.test.ts lib/gaze/gaze.test.ts lib/calibration/calibration.test.ts"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
