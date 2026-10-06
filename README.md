@@ -326,6 +326,76 @@ AI Tutor enforces strict ergonomic principles for webcam eye tracking:
 
 ---
 
+## Voice Input & Output (Phase 7)
+
+AI Tutor integrates hands-free voice input (Speech-to-Text) and natural audio narration (Text-to-Speech) designed specifically for neurodiverse learners, fully operable via eye gaze and mouse/keyboard.
+
+```
+[ Microphone ] ──> [ SpeechToTextProvider (Web Speech STT) ] ──> [ Interim / Final Transcript ]
+                                                                             │
+                                                                             ▼
+                                                                [ Confirmation Card ]
+                                                        ( "Did I hear you right?" )
+                                                     ┌───────────────┼───────────────┐
+                                                     ▼               ▼               ▼
+                                               [ Yes, Ask ]     [ Try Again ]    [ Cancel ]
+                                                     │
+                                                     ▼
+                                      [ AI Tutor Mock / RAG Engine ]
+                                                     │
+                                                     ▼
+                                 [ TextToSpeechProvider (SpeechSynthesis) ]
+                                                     │
+                                                     ▼
+                                 [ Read-Along Sentence & Word Highlighting ]
+```
+
+### 1. Pluggable Provider Abstraction (`frontend/lib/voice/`)
+
+All voice interactions are decoupled from React components through clean TypeScript provider interfaces, allowing seamless replacement with backend models (such as OpenAI Whisper, ElevenLabs, or self-hosted FastSpeech) without changing any UI code:
+
+- **`types.ts`:**
+  - `SpeechToTextProvider`: `start(options)`, `stop()`, `abort()`, `isSupported()`, and event callbacks (`onInterim`, `onFinal`, `onError`, `onStateChange`, `onStart`, `onEnd`).
+  - `TextToSpeechProvider`: `speak(text, options)`, `pause()`, `resume()`, `cancel()`, `isSupported()`, `getVoices()`, and event callbacks (`onStart`, `onBoundary`, `onEnd`, `onError`).
+- **`webSpeechStt.ts` (`WebSpeechSttProvider`):** Implements browser `SpeechRecognition` / `webkitSpeechRecognition` with dialect support (`en-IN` default, `en-US` toggle), interim live results, and user-friendly error classification.
+- **`browserTts.ts` (`BrowserTtsProvider`):** Implements `window.speechSynthesis` with sentence chunking (prevents Chrome's ~15 s silence cutoff), asynchronous voice resolution, speed pacing ($0.6\times$ to $1.4\times$, default $0.9\times$), and character-to-sentence/word boundary mapping.
+- **`index.ts`:** Factory functions `createSpeechToTextProvider()` and `createTextToSpeechProvider()`.
+
+### 2. Neurodiverse-Centered Interaction Features
+
+- **Confirmation Step ("Did I hear you right?"):**
+  - Neurodiverse students frequently encounter speech disfluencies or recognition inaccuracies.
+  - After speaking, the system presents a high-contrast confirmation card displaying the transcribed question with three large gaze buttons: **"Yes, Ask Tutor"**, **"Try Again"**, and **"Cancel"**.
+- **Read-Along Text Highlighting (`ReadAlongText.tsx`):**
+  - Synchronizes visual reading with audio listening by highlighting the active spoken sentence with a high-contrast cyan border/glow and underlining the active word in real time.
+- **Mutual Exclusion:**
+  - The microphone is automatically silenced before speech synthesis begins, and text-to-speech is paused before listening starts, preventing the microphone from picking up synthetic audio feedback.
+- **Typed Input Fallback:**
+  - For students who prefer or need typing, an accessible typed input box is always available alongside the voice button.
+- **Audio Control Center (`ListenView.tsx` & `GazeSettingsModal.tsx`):**
+  - Large gaze-operable speed adjusters ("Slower" / "Faster"), instant voice cycler across English voices, test speech playback, and an auto-read toggle.
+
+### 3. Voice Privacy & Browser Support
+
+- **Browser Service Notice:** In Chromium browsers (Google Chrome, Microsoft Edge), Web Speech STT may communicate with the browser vendor's secure speech recognition service. Text-to-Speech (TTS) runs **100% locally** in the browser.
+- **Zero Audio Storage:** AI Tutor never records, uploads, logs, or stores audio files or student voice data on any server.
+- **Browser Compatibility:** Recommended on **Google Chrome** or **Microsoft Edge**. If accessed from an unsupported browser (such as Mozilla Firefox), AI Tutor gracefully informs the student and activates the typed keyboard fallback.
+
+### 4. Adding Custom STT / TTS Providers Later
+
+To connect a backend Whisper or Cloud TTS model, simply implement the provider interface and register it in `frontend/lib/voice/index.ts`:
+
+```typescript
+// Example: Custom Backend Whisper STT Provider
+import type { SpeechToTextProvider, SpeechToTextEvents } from "./types";
+
+export class BackendWhisperSttProvider implements SpeechToTextProvider {
+  // Implement start(), stop(), abort(), isSupported(), setEvents()
+}
+```
+
+---
+
 ## Data Sources and Usage
 
 - **Curriculum Textbooks:** School textbooks for Tamil Nadu State Board (SCERT) and CBSE / NCERT (Standards 6 through 12) are **NOT** included in this repository.

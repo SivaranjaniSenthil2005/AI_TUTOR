@@ -8,6 +8,11 @@ import { GazeScrollArea } from "@/components/gaze/GazeScrollArea";
 import { GazePauseBar } from "@/components/gaze/GazePauseBar";
 import { GazeSettingsModal } from "@/components/gaze/GazeSettingsModal";
 import { LearnChooser } from "@/components/LearnChooser";
+import { AskView, type ChatMessage } from "@/components/voice/AskView";
+import { ListenView } from "@/components/voice/ListenView";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { getTutorReply } from "@/lib/tutor/mock";
 import type { GazePoint } from "@/hooks/useGazePoint";
 import type { GazeMapper } from "@/lib/calibration/mapper";
 
@@ -33,9 +38,31 @@ export default function Home() {
   const [mapper, setMapper] = useState<GazeMapper | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
+  // Chat and Voice State
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isThinking, setIsThinking] = useState<boolean>(false);
+  const [activeSpeakingId, setActiveSpeakingId] = useState<string | null>(null);
+
   const sharedGazePointRef = useRef<GazePoint>(DEFAULT_GAZE_POINT);
   const webcamHandleRef = useRef<WebcamViewHandle | null>(null);
 
+  // Voice output hook (TTS)
+  const tts = useSpeechSynthesis({
+    onStart: () => {},
+    onEnd: () => {
+      setActiveSpeakingId(null);
+    },
+  });
+
+  // Voice input hook (STT) with mutual exclusion (stops TTS before listening)
+  const stt = useSpeechRecognition({
+    onStopTts: () => {
+      tts.stop();
+      setActiveSpeakingId(null);
+    },
+  });
+
+  // Check backend health
   const checkBackendHealth = useCallback(async () => {
     setBackendStatus("checking");
     try {
@@ -89,6 +116,71 @@ export default function Home() {
     };
   }, []);
 
+  // Handle Asking a Question (Voice or Typed)
+  const handleAskQuestion = useCallback(
+    async (questionText: string, wasVoice: boolean) => {
+      if (!questionText.trim()) return;
+
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: questionText.trim(),
+        timestamp: Date.now(),
+        wasVoice,
+      };
+
+      setMessages((prev) => [...prev, userMsg]);
+      setIsThinking(true);
+
+      try {
+        // Fetch simulated / mock tutor reply
+        const replyText = await getTutorReply(questionText, {
+          board: "Tamil Nadu SCERT",
+          className: "Std 10",
+          subject: "Science",
+        });
+
+        const tutorMsg: ChatMessage = {
+          id: `tutor-${Date.now()}`,
+          role: "tutor",
+          text: replyText,
+          timestamp: Date.now(),
+        };
+
+        setMessages((prev) => [...prev, tutorMsg]);
+        setIsThinking(false);
+
+        // Auto-read aloud if enabled or asked via voice
+        if (tts.settings.autoRead || wasVoice) {
+          setActiveSpeakingId(tutorMsg.id);
+          tts.speak(replyText);
+        }
+      } catch {
+        setIsThinking(false);
+      }
+    },
+    [tts]
+  );
+
+  const handleSpeakMessage = useCallback(
+    (id: string, text: string) => {
+      stt.stop(); // Mutual exclusion
+      setActiveSpeakingId(id);
+      tts.speak(text);
+    },
+    [stt, tts]
+  );
+
+  const handleStopSpeaking = useCallback(() => {
+    tts.stop();
+    setActiveSpeakingId(null);
+  }, [tts]);
+
+  // Latest tutor message for the Listen screen
+  const latestTutorMessage = messages
+    .filter((m) => m.role === "tutor")
+    .slice(-1)[0] || null;
+
   const navItems: { id: TabType; label: string; icon: string; desc: string; tag: string }[] = [
     {
       id: "home",
@@ -108,15 +200,15 @@ export default function Home() {
       id: "ask",
       label: "Ask",
       icon: "💬",
-      desc: "Curriculum Q&A with hybrid RAG",
-      tag: "RAG Tutor",
+      desc: "Voice STT curriculum Q&A",
+      tag: "Voice Ask",
     },
     {
       id: "listen",
       label: "Listen",
       icon: "🔊",
-      desc: "Voice answers & speech pacing",
-      tag: "Voice & Audio",
+      desc: "Voice TTS & read-along highlighting",
+      tag: "TTS Audio",
     },
   ];
 
@@ -266,30 +358,30 @@ export default function Home() {
                         <span>👋</span> Hello! Ready to learn?
                       </h3>
                       <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-                        AI Tutor is your accessible study assistant. Start the camera on the left, then look at any button below for a second to activate it hands-free!
+                        AI Tutor is your accessible study assistant. Start the camera on the left, then speak your questions or look at any button to navigate hands-free!
                       </p>
                     </div>
 
                     <div className="space-y-3">
                       <h4 className="text-base font-black text-amber-300 uppercase tracking-wider">
-                        Quick Gaze Actions (Look to Choose)
+                        Quick Actions (Look to Choose)
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <GazeButton
-                          id="quick-goto-learn-btn"
-                          onClick={() => setActiveTab("learn")}
-                          label="Open Textbook Library"
-                          subtitle="TN SCERT & CBSE Standards 6 to 12"
-                          icon="📖"
-                          variant="card"
+                          id="quick-goto-ask-btn"
+                          onClick={() => setActiveTab("ask")}
+                          label="Ask with Voice"
+                          subtitle="Speak your question with confirmation verification"
+                          icon="🎙️"
+                          variant="accent"
                           size="large"
                         />
                         <GazeButton
-                          id="quick-goto-ask-btn"
-                          onClick={() => setActiveTab("ask")}
-                          label="Ask a Question"
-                          subtitle="Curriculum RAG assistant with citations"
-                          icon="💬"
+                          id="quick-goto-learn-btn"
+                          onClick={() => setActiveTab("learn")}
+                          label="Textbook Explorer"
+                          subtitle="TN SCERT & CBSE Standards 6 to 12"
+                          icon="📖"
                           variant="card"
                           size="large"
                         />
@@ -298,15 +390,15 @@ export default function Home() {
 
                     <div className="border-2 border-dashed border-slate-700 rounded-2xl p-6 bg-[#070b14]/60 text-center">
                       <div className="w-14 h-14 rounded-2xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-3xl mx-auto mb-2">
-                        💡
+                        🎙️
                       </div>
                       <h4 className="text-lg font-black text-white mb-1">
-                        Eye Control Tips
+                        Multimodal Gaze + Voice Navigation
                       </h4>
                       <p className="text-sm text-slate-400 max-w-md mx-auto">
-                        • Gaze at a button to fill its progress ring.<br />
-                        • Natural blinks won&apos;t cancel your dwell (250ms grace period).<br />
-                        • Look at top or bottom bands to smoothly scroll.
+                        • Dwell on the microphone button to ask a question by voice.<br />
+                        • Verify your speech in the confirmation card.<br />
+                        • Listen to answers with read-along text highlighting.
                       </p>
                     </div>
                   </div>
@@ -315,100 +407,40 @@ export default function Home() {
                 {/* Learn View: Interactive Gaze-Operable Chooser */}
                 {activeTab === "learn" && <LearnChooser />}
 
-                {/* Ask View: Coming Soon */}
+                {/* Ask View: Voice Input & Chat Thread */}
                 {activeTab === "ask" && (
-                  <div className="space-y-6">
-                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6">
-                      <div className="w-16 h-16 rounded-2xl bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-3xl mb-3">
-                        💬
-                      </div>
-                      <h3 className="text-2xl font-black text-white mb-2">
-                        Ask AI Tutor (RAG Textbook Assistant)
-                      </h3>
-                      <p className="text-base text-slate-300 leading-relaxed mb-4">
-                        In upcoming phases, you will be able to speak or type any question from your selected textbook and receive clear, cited answers with page numbers.
-                      </p>
-
-                      <div className="bg-[#070b14] border-2 border-slate-700 rounded-xl p-4 mb-4">
-                        <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block mb-1">
-                          Example Questions Ready for Next Phase:
-                        </span>
-                        <ul className="text-sm text-slate-300 space-y-1.5 list-disc list-inside">
-                          <li>Explain photosynthesis from TN Class 10 Science Chapter 12</li>
-                          <li>What is the Pythagoras theorem and its proof in CBSE Class 9 Maths?</li>
-                          <li>Describe the fundamental rights in Indian Constitution (Social Science Std 8)</li>
-                        </ul>
-                      </div>
-
-                      <GazeButton
-                        id="ask-back-learn-btn"
-                        onClick={() => setActiveTab("learn")}
-                        label="Select Your Textbook in Learn Mode"
-                        icon="📖"
-                        variant="accent"
-                        size="default"
-                      />
-                    </div>
-                  </div>
+                  <AskView
+                    messages={messages}
+                    onAskQuestion={handleAskQuestion}
+                    isThinking={isThinking}
+                    stt={stt}
+                    tts={tts}
+                    activeSpeakingId={activeSpeakingId}
+                    onSpeakMessage={handleSpeakMessage}
+                    onStopSpeaking={handleStopSpeaking}
+                    tutorContext={{
+                      board: "Tamil Nadu SCERT",
+                      className: "Std 10",
+                      subject: "Science",
+                    }}
+                  />
                 )}
 
-                {/* Listen View: Coming Soon */}
+                {/* Listen View: Audio Narration & Read-Along */}
                 {activeTab === "listen" && (
-                  <div className="space-y-6">
-                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6">
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-400/20 border border-emerald-400/50 flex items-center justify-center text-3xl mb-3">
-                        🔊
-                      </div>
-                      <h3 className="text-2xl font-black text-white mb-2">
-                        Listen & Audio Narration Center
-                      </h3>
-                      <p className="text-base text-slate-300 leading-relaxed mb-4">
-                        Text-to-speech narration with customized pacing (0.8x gentle, 1.0x normal, 1.2x brisk) for neurodiverse auditory comfort.
-                      </p>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                        <GazeButton
-                          id="listen-speed-gentle"
-                          onClick={() => {}}
-                          label="0.8x Gentle"
-                          icon="🐢"
-                          variant="card"
-                          size="compact"
-                        />
-                        <GazeButton
-                          id="listen-speed-normal"
-                          onClick={() => {}}
-                          label="1.0x Normal"
-                          icon="🚶"
-                          variant="active"
-                          size="compact"
-                        />
-                        <GazeButton
-                          id="listen-speed-brisk"
-                          onClick={() => {}}
-                          label="1.2x Brisk"
-                          icon="🐇"
-                          variant="card"
-                          size="compact"
-                        />
-                      </div>
-
-                      <GazeButton
-                        id="listen-back-learn-btn"
-                        onClick={() => setActiveTab("learn")}
-                        label="Explore Textbooks to Listen"
-                        icon="📖"
-                        variant="accent"
-                        size="default"
-                      />
-                    </div>
-                  </div>
+                  <ListenView
+                    latestTutorMessage={latestTutorMessage}
+                    tts={tts}
+                    onGoToAsk={() => setActiveTab("ask")}
+                  />
                 )}
               </GazeScrollArea>
 
               {/* Status Bar */}
               <div className="p-3 border-t-2 border-slate-800 bg-[#0d1527] flex items-center justify-between text-xs text-slate-400 font-semibold">
-                <span>Eye-gaze navigation active • Dwell on any button to select</span>
+                <span>
+                  {tts.speaking ? "🔊 Reading answer aloud..." : stt.state === "listening" ? "🎤 Listening to your voice..." : "Multimodal Gaze + Voice Active"}
+                </span>
                 <span>{lastChecked ? `Backend checked: ${lastChecked}` : ""}</span>
               </div>
             </div>
@@ -452,6 +484,12 @@ export default function Home() {
           }}
           onSetCenter={() => webcamHandleRef.current?.startSetCenter()}
           isCameraActive={isCameraActive}
+          voiceSettings={tts.settings}
+          onUpdateVoiceSettings={tts.updateSettings}
+          voices={tts.voices}
+          onTestVoice={() =>
+            tts.speak("Hello! I am AI Tutor, your accessible voice learning assistant.")
+          }
         />
 
         {/* Accessible Footer */}
@@ -461,7 +499,7 @@ export default function Home() {
               AI Tutor © 2026. Accessible Learning for Neurodiverse Students.
             </p>
             <p className="text-xs sm:text-sm text-slate-400">
-              Hands-Free Eye Gaze Dwell Navigation • 100% In-Browser Privacy
+              Hands-Free Eye Gaze Dwell Navigation • Voice Input & Output • 100% Client-Side Privacy
             </p>
           </div>
         </footer>
