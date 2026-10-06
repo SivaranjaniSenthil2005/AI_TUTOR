@@ -66,12 +66,19 @@ test("Feature vector generation and configuration", () => {
     roll: 1.0,
   };
 
-  const fullFeats = buildFeatureVector(sample, DEFAULT_FEATURE_CONFIG);
-  assert.ok(fullFeats.length > 5);
+  const defaultFeats = buildFeatureVector(sample, DEFAULT_FEATURE_CONFIG);
+  assert.equal(defaultFeats.length, 5);
+
+  const polyFeats = buildFeatureVector(sample, {
+    includePolynomial: true,
+    includeCrossTerms: true,
+    includeHeadPose: true,
+  });
+  assert.ok(polyFeats.length > 5);
 
   const matrix = buildFeatureMatrix([sample, sample]);
   assert.equal(matrix.length, 2);
-  assert.equal(matrix[0].length, fullFeats.length);
+  assert.equal(matrix[0].length, defaultFeats.length);
 });
 
 test("Calibration quality assessment and grading thresholds", () => {

@@ -12,8 +12,8 @@ export interface FeatureConfig {
 }
 
 export const DEFAULT_FEATURE_CONFIG: FeatureConfig = {
-  includePolynomial: true,
-  includeCrossTerms: true,
+  includePolynomial: false,
+  includeCrossTerms: false,
   includeHeadPose: true,
 };
 

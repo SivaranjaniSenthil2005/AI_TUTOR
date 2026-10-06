@@ -164,16 +164,16 @@ export function CalibrationScreen({
     const currentTarget = targets[pointIndex];
     if (!currentTarget) return;
 
-    // Phase 1: Settle phase (~700ms)
+    // Phase 1: Settle phase (~850ms) to ensure eyes have fully landed and fixated on dot
     currentPointSamplesRef.current = [];
 
     const timerId = setTimeout(() => {
       if (!isMounted) return;
 
-      // Phase 2: Collect phase (~30 good samples at ~30Hz = ~1000ms)
+      // Phase 2: Collect phase (~35 good samples at ~30Hz)
       setPointPhase("collecting");
       let sampleCount = 0;
-      const targetSampleTotal = 30;
+      const targetSampleTotal = 35;
 
       collectInterval = setInterval(() => {
         if (!isMounted) return;
@@ -183,7 +183,7 @@ export function CalibrationScreen({
           currentGaze &&
           currentGaze.faceVisible &&
           !currentGaze.isBlinking &&
-          currentGaze.confidence >= 0.4
+          currentGaze.confidence >= 0.35
         ) {
           currentPointSamplesRef.current.push({ ...currentGaze.features });
           sampleCount++;
@@ -194,7 +194,7 @@ export function CalibrationScreen({
           if (collectInterval) clearInterval(collectInterval);
 
           const collected = currentPointSamplesRef.current;
-          if (collected.length < 12 && retryCountRef.current === 0) {
+          if (collected.length < 15 && retryCountRef.current === 0) {
             // Retry point once if too few clean samples collected
             retryCountRef.current = 1;
             setPointPhase("settling");
@@ -203,9 +203,11 @@ export function CalibrationScreen({
           }
 
           retryCountRef.current = 0;
+          // Discard initial saccade transition frames (first 5 samples) to get pure steady-state fixation
+          const steadySamples = collected.length > 10 ? collected.slice(5) : collected;
           const medianFeat = computeMedianFeatures(
-            collected.length > 0
-              ? collected
+            steadySamples.length > 0
+              ? steadySamples
               : [currentGaze?.features || { irisX: 0.5, irisY: 0.5, yaw: 0, pitch: 0, roll: 0 }]
           );
 

@@ -18,8 +18,8 @@ export interface GazePoint {
 export interface UseGazePointOptions {
   gazeRef: React.RefObject<GazeFrameState>;
   mapper: GazeMapper | null;
-  minCutoff?: number; // Screen coordinate filter minCutoff (default: 1.2)
-  beta?: number;      // Screen coordinate filter beta (default: 0.01)
+  minCutoff?: number; // Screen coordinate filter minCutoff (default: 0.8)
+  beta?: number;      // Screen coordinate filter beta (default: 0.003)
 }
 
 export interface UseGazePointReturn {
@@ -43,8 +43,8 @@ const DEFAULT_GAZE_POINT: GazePoint = {
 export function useGazePoint({
   gazeRef,
   mapper,
-  minCutoff = 1.2,
-  beta = 0.01,
+  minCutoff = 0.8,
+  beta = 0.003,
 }: UseGazePointOptions): UseGazePointReturn {
   const [gazePoint, setGazePoint] = useState<GazePoint>(DEFAULT_GAZE_POINT);
 
