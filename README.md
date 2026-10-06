@@ -407,6 +407,86 @@ export class BackendWhisperSttProvider implements SpeechToTextProvider {
 
 ---
 
+## Fetching Textbooks & Polite Ingestion (Phase 8b)
+
+AI Tutor includes polite, manifest-driven tools to discover and download English-medium textbooks (Standards 6 to 12) from official educational portals (NCERT and Tamil Nadu SCERT).
+
+```
+[ Listing URL or Offline HTML ] ──> [ scripts/discover_links.py ]
+                                                    │
+                                                    ▼
+                                     [ data/manifest.draft.yaml ]
+                                                    │ (Human Review & Verification)
+                                                    ▼
+                                       [ data/manifest.yaml ]
+                                                    │
+                                                    ▼
+                                       [ scripts/fetch_pdfs.py ] ──> [ data/download_log.jsonl ]
+                                                    │
+                                                    ▼
+                                 [ data/raw/{board}/class_{N}/{subject}/ ]
+                                 (Magic Bytes & PyMuPDF Verified PDFs)
+```
+
+### 1. Review-Then-Download Workflow
+
+To ensure complete accuracy, copyright compliance, and safety, textbook acquisition follows a strict two-step process:
+
+1. **Discover Links to Draft Manifest:**
+   ```bash
+   # Online link discovery with robots.txt checking
+   python -m scripts.discover_links --url https://ncert.nic.in/textbook.php --board cbse
+   ```
+   This generates a draft manifest at `data/manifest.draft.yaml` filtering for English medium and Classes 6–12. It **never** overwrites your active manifest automatically.
+
+2. **Offline HTML Fallback Mode (For JavaScript-Rendered Portals):**
+   If a portal requires JavaScript or complex form selections:
+   - Open the portal in your browser, select the desired class/subject, and save the webpage locally (**File > Save As** as `saved_page.html`).
+   - Run discovery in offline mode:
+     ```bash
+     python -m scripts.discover_links --html-file saved_page.html --base-url https://ncert.nic.in/ --board cbse
+     ```
+
+3. **Human Review & Approval:**
+   Inspect `data/manifest.draft.yaml`, verify the textbook titles and subjects, and copy/rename it to `data/manifest.yaml`:
+   ```bash
+   cp data/manifest.draft.yaml data/manifest.yaml
+   ```
+
+4. **Polite Resumable Download:**
+   ```bash
+   python -m scripts.fetch_pdfs --manifest data/manifest.yaml --board cbse --class 8
+   ```
+
+5. **Single Convenience Command (`scripts.sync`):**
+   ```bash
+   # Synchronize Class 8 CBSE science and mathematics
+   python -m scripts.sync --board cbse --class 8
+   ```
+
+### 2. Polite Scraping Rules & Safety Guarantees
+
+All network requests strictly enforce:
+- **`robots.txt` Compliance:** Evaluates host rules with `urllib.robotparser.RobotFileParser` before every request. Disallowed endpoints are skipped with clear instructions to use offline HTML fallback.
+- **Sequential Rate Limiting:** Enforces a minimum interval of 2.0 seconds between requests (at most 1 request per 2 seconds). Requests are strictly sequential (never parallel).
+- **Exponential Backoff & `Retry-After`:** Automatically handles HTTP 429 and 5xx responses by honoring `Retry-After` headers and applying exponential backoff.
+- **Descriptive Identity:** Identifies requests via custom User-Agent (`AI-Tutor-Bot/1.0`, configurable via `AI_TUTOR_USER_AGENT` or `AI_TUTOR_CONTACT`).
+- **Gradual Scale Up (`--max-files`):** Default limit of 50 files per run prevents unexpected bandwidth or storage exhaustion.
+
+### 3. PDF Integrity Verification & Resume Support
+
+- **Integrity Validation:** Every existing and newly downloaded file is validated by verifying `%PDF-` magic bytes and reading the document page count via **PyMuPDF** (`pymupdf`). Corrupted or incomplete partial downloads (`.part`) are automatically detected and cleaned up.
+- **Resume Support:** Existing valid files are skipped automatically without re-downloading.
+- **Audit Logging:** Every download or skip event is recorded with file size, SHA256 checksum, HTTP status, and timestamp in `data/download_log.jsonl`.
+
+### 4. Storage & Copyright Expectations
+
+- **Disk Space:** Each standard textbook PDF is typically between 10 MB and 45 MB. A full curriculum set for Standards 6–12 across core subjects requires approximately 1.5 GB to 3.5 GB of disk space.
+- **Git Hygiene:** All downloaded PDFs, draft manifests, and download logs are strictly gitignored (`.gitignore`).
+- **Copyright Notice:** Textbook materials are the intellectual property of their respective publishers (NCERT / TN SCERT). Users are responsible for ensuring personal, educational, and fair-use compliance.
+
+---
+
 ## Privacy & Neurodiversity-First Design
 
 - **Camera & Video Privacy:** All gaze and facial landmark processing runs entirely **on-device inside the browser** using client-side WebAssembly/WebGPU. No raw video feed, frames, or biometric recordings are ever uploaded, transmitted, or stored on any server.

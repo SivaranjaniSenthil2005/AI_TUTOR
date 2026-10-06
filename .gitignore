@@ -40,6 +40,10 @@ data/processed/**
 !data/processed/**/.gitkeep
 data/**/*.pdf
 *.pdf
+data/*.draft.yaml
+data/manifest.draft.yaml
+data/*.jsonl
+data/download_log.jsonl
 chroma/
 chroma_db/
 .chroma/
