@@ -25,6 +25,12 @@ export interface WebcamViewProps {
   onLandmarksUpdate?: (landmarks: NormalizedLandmark[] | null) => void;
   onGazeUpdate?: (gazeState: GazeFrameState) => void;
   onGazePointUpdate?: (point: GazePoint) => void;
+  onMapperChange?: (mapper: GazeMapper | null) => void;
+  onCameraActiveChange?: (active: boolean) => void;
+  isCalibrationOpen?: boolean;
+  onCalibrationOpenChange?: (open: boolean) => void;
+  isPaused?: boolean;
+  sharedGazePointRef?: React.RefObject<GazePoint>;
   className?: string;
 }
 
@@ -39,19 +45,51 @@ export interface WebcamViewHandle {
   getLatestGaze: () => GazeFrameState;
   getLatestGazePoint: () => GazePoint;
   openCalibration: () => void;
+  startSetCenter: () => void;
 }
 
 const MAPPER_STORAGE_KEY = "ai_tutor_gaze_mapper";
 
 export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
-  function WebcamView({ onReady, onLandmarksUpdate, onGazeUpdate, onGazePointUpdate, className = "" }, ref) {
+  function WebcamView(
+    {
+      onReady,
+      onLandmarksUpdate,
+      onGazeUpdate,
+      onGazePointUpdate,
+      onMapperChange,
+      onCameraActiveChange,
+      isCalibrationOpen: controlledIsCalibrationOpen,
+      onCalibrationOpenChange,
+      isPaused = false,
+      sharedGazePointRef,
+      className = "",
+    },
+    ref
+  ) {
     const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const [currentLandmarks, setCurrentLandmarks] = useState<NormalizedLandmark[] | null>(null);
     const [showOverlay, setShowOverlay] = useState<boolean>(true);
     const [showDebug, setShowDebug] = useState<boolean>(false);
     const [showGazeDot, setShowGazeDot] = useState<boolean>(true);
-    const [isCalibrationOpen, setIsCalibrationOpen] = useState<boolean>(false);
+    const [internalIsCalibrationOpen, setInternalIsCalibrationOpen] = useState<boolean>(false);
     const [viewportNotice, setViewportNotice] = useState<string | null>(null);
+
+    const isCalibrationOpen =
+      controlledIsCalibrationOpen !== undefined
+        ? controlledIsCalibrationOpen
+        : internalIsCalibrationOpen;
+
+    const setCalibrationOpen = useCallback(
+      (open: boolean) => {
+        if (onCalibrationOpenChange) {
+          onCalibrationOpenChange(open);
+        } else {
+          setInternalIsCalibrationOpen(open);
+        }
+      },
+      [onCalibrationOpenChange]
+    );
 
     // Stored GazeMapper model
     const [mapper, setMapper] = useState<GazeMapper | null>(() => {
@@ -153,6 +191,14 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
       onReady: handleVideoReady,
     });
 
+    useEffect(() => {
+      onMapperChange?.(mapper);
+    }, [mapper, onMapperChange]);
+
+    useEffect(() => {
+      onCameraActiveChange?.(webcamStatus === "active");
+    }, [webcamStatus, onCameraActiveChange]);
+
     const handleLandmarkResults = useCallback(
       (result: FaceLandmarkerResult, timestampMs: number) => {
         if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
@@ -167,6 +213,10 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
           const gazeFrame = processFrame(primaryFace, matrix, timestampMs);
           const screenPoint = processGazeFrame(gazeFrame);
 
+          if (sharedGazePointRef) {
+            (sharedGazePointRef as React.MutableRefObject<GazePoint>).current = screenPoint;
+          }
+
           if (onLandmarksUpdateRef.current) {
             onLandmarksUpdateRef.current(primaryFace);
           }
@@ -177,6 +227,11 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
           setCurrentLandmarks(null);
           const gazeFrame = processFrame(null, undefined, timestampMs);
           const screenPoint = processGazeFrame(gazeFrame);
+
+          if (sharedGazePointRef) {
+            (sharedGazePointRef as React.MutableRefObject<GazePoint>).current = screenPoint;
+          }
+
           if (onLandmarksUpdateRef.current) {
             onLandmarksUpdateRef.current(null);
           }
@@ -185,7 +240,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
           }
         }
       },
-      [processFrame, processGazeFrame]
+      [processFrame, processGazeFrame, sharedGazePointRef]
     );
 
     const {
@@ -233,18 +288,23 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
       getLatestResult: () => latestResultRef.current,
       getLatestGaze: () => gazeRef.current,
       getLatestGazePoint: () => gazePointRef.current,
-      openCalibration: () => setIsCalibrationOpen(true),
+      openCalibration: () => setCalibrationOpen(true),
+      startSetCenter,
     }));
 
     return (
       <>
         {/* Real-time Hardware Accelerated Gaze Dot Overlay */}
-        <GazeDot gazePointRef={gazePointRef} visible={showGazeDot && !!mapper && webcamStatus === "active"} />
+        <GazeDot
+          gazePointRef={sharedGazePointRef || gazePointRef}
+          visible={showGazeDot && !!mapper && webcamStatus === "active"}
+          isPaused={isPaused}
+        />
 
         {/* Fullscreen Calibration Screen Modal */}
         <CalibrationScreen
           isOpen={isCalibrationOpen}
-          onClose={() => setIsCalibrationOpen(false)}
+          onClose={() => setCalibrationOpen(false)}
           onComplete={handleCalibrationComplete}
           gazeRef={gazeRef}
           isCameraActive={webcamStatus === "active"}
@@ -415,7 +475,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
                 <span>{viewportNotice}</span>
               </div>
               <button
-                onClick={() => setIsCalibrationOpen(true)}
+                onClick={() => setCalibrationOpen(true)}
                 className="px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-lg text-xs cursor-pointer hover:bg-amber-300"
               >
                 Recalibrate
@@ -440,7 +500,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setIsCalibrationOpen(true)}
+                      onClick={() => setCalibrationOpen(true)}
                       className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl border border-amber-300 shadow cursor-pointer transition-all hover:scale-105 active:scale-95"
                     >
                       🎯 {mapper ? "Recalibrate" : "Calibrate Eyes"}
@@ -531,7 +591,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
               onThresholdYChange={setThresholdY}
               onSetCenter={startSetCenter}
               onResetBaseline={resetBaseline}
-              onOpenCalibration={() => setIsCalibrationOpen(true)}
+              onOpenCalibration={() => setCalibrationOpen(true)}
               onClearCalibration={handleClearCalibration}
               isCalibratingCenter={isCalibratingCenter}
               calibrationProgress={calibrationProgress}

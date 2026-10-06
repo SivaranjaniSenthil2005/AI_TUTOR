@@ -6,9 +6,10 @@ import type { GazePoint } from "@/hooks/useGazePoint";
 export interface GazeDotProps {
   gazePointRef: React.RefObject<GazePoint>;
   visible?: boolean;
+  isPaused?: boolean;
 }
 
-export function GazeDot({ gazePointRef, visible = true }: GazeDotProps) {
+export function GazeDot({ gazePointRef, visible = true, isPaused = false }: GazeDotProps) {
   const dotRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export function GazeDot({ gazePointRef, visible = true }: GazeDotProps) {
 
       if (el && pt) {
         if (pt.valid) {
-          el.style.opacity = "1";
+          el.style.opacity = isPaused ? "0.4" : "1";
           el.style.transform = `translate3d(${pt.xPx}px, ${pt.yPx}px, 0) translate(-50%, -50%)`;
         } else {
           el.style.opacity = "0";
@@ -37,7 +38,7 @@ export function GazeDot({ gazePointRef, visible = true }: GazeDotProps) {
     return () => {
       cancelAnimationFrame(animId);
     };
-  }, [gazePointRef, visible]);
+  }, [gazePointRef, visible, isPaused]);
 
   if (!visible) return null;
 
@@ -51,9 +52,19 @@ export function GazeDot({ gazePointRef, visible = true }: GazeDotProps) {
       }}
     >
       {/* Outer Glowing Ring */}
-      <div className="absolute inset-0 rounded-full bg-amber-400/30 border-2 border-amber-300 shadow-[0_0_15px_#fbbf24] animate-pulse" />
+      <div
+        className={`absolute inset-0 rounded-full transition-all duration-200 ${
+          isPaused
+            ? "bg-slate-500/20 border-2 border-dashed border-slate-400"
+            : "bg-amber-400/30 border-2 border-amber-300 shadow-[0_0_15px_#fbbf24] animate-pulse"
+        }`}
+      />
       {/* Inner Pupil Center Dot */}
-      <div className="w-2.5 h-2.5 rounded-full bg-amber-300 shadow-md border border-slate-950" />
+      <div
+        className={`w-2.5 h-2.5 rounded-full transition-colors ${
+          isPaused ? "bg-slate-400" : "bg-amber-300 shadow-md border border-slate-950"
+        }`}
+      />
     </div>
   );
 }

@@ -1,14 +1,40 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { WebcamView } from "@/components/WebcamView";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { WebcamView, type WebcamViewHandle } from "@/components/WebcamView";
+import { GazeProvider } from "@/lib/gazeui/GazeContext";
+import { GazeButton } from "@/components/gaze/GazeButton";
+import { GazeScrollArea } from "@/components/gaze/GazeScrollArea";
+import { GazePauseBar } from "@/components/gaze/GazePauseBar";
+import { GazeSettingsModal } from "@/components/gaze/GazeSettingsModal";
+import { LearnChooser } from "@/components/LearnChooser";
+import type { GazePoint } from "@/hooks/useGazePoint";
+import type { GazeMapper } from "@/lib/calibration/mapper";
 
 type BackendStatus = "checking" | "connected" | "disconnected";
+type TabType = "home" | "learn" | "ask" | "listen";
+
+const DEFAULT_GAZE_POINT: GazePoint = {
+  x: 0.5,
+  y: 0.5,
+  xPx: 0,
+  yPx: 0,
+  confidence: 0,
+  timestamp: 0,
+  valid: false,
+};
 
 export default function Home() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
-  const [activeTab, setActiveTab] = useState<string>("home");
+  const [activeTab, setActiveTab] = useState<TabType>("home");
   const [lastChecked, setLastChecked] = useState<string>("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState<boolean>(false);
+  const [mapper, setMapper] = useState<GazeMapper | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+
+  const sharedGazePointRef = useRef<GazePoint>(DEFAULT_GAZE_POINT);
+  const webcamHandleRef = useRef<WebcamViewHandle | null>(null);
 
   const checkBackendHealth = useCallback(async () => {
     setBackendStatus("checking");
@@ -21,11 +47,7 @@ export default function Home() {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.status === "ok") {
-          setBackendStatus("connected");
-        } else {
-          setBackendStatus("disconnected");
-        }
+        setBackendStatus(data.status === "ok" ? "connected" : "disconnected");
       } else {
         setBackendStatus("disconnected");
       }
@@ -67,7 +89,7 @@ export default function Home() {
     };
   }, []);
 
-  const navItems = [
+  const navItems: { id: TabType; label: string; icon: string; desc: string; tag: string }[] = [
     {
       id: "home",
       label: "Home",
@@ -80,109 +102,151 @@ export default function Home() {
       label: "Learn",
       icon: "📖",
       desc: "TN SCERT & CBSE textbooks (Std 6–12)",
-      tag: "Textbook Explorer",
+      tag: "Curriculum",
     },
     {
       id: "ask",
       label: "Ask",
       icon: "💬",
-      desc: "Curriculum Q&A with hybrid RAG & citations",
-      tag: "RAG Assistant",
+      desc: "Curriculum Q&A with hybrid RAG",
+      tag: "RAG Tutor",
     },
     {
       id: "listen",
       label: "Listen",
       icon: "🔊",
-      desc: "Audio narration, voice answers & speech pacing",
-      tag: "Voice & TTS",
+      desc: "Voice answers & speech pacing",
+      tag: "Voice & Audio",
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-[#f8fafc] flex flex-col selection:bg-amber-400 selection:text-black">
-      {/* Top Accessible Header */}
-      <header className="border-b-4 border-amber-400/80 bg-[#0d1527] px-6 py-5 shadow-lg">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-2xl shadow-inner">
-              AI
+    <GazeProvider gazePointRef={sharedGazePointRef} isCameraActive={isCameraActive}>
+      <div className="min-h-screen bg-[#070b14] text-[#f8fafc] flex flex-col selection:bg-amber-400 selection:text-black">
+        {/* Top Header with Accessible Controls */}
+        <header className="border-b-4 border-amber-400/80 bg-[#0d1527] px-6 py-4 shadow-lg sticky top-0 z-30">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            {/* Logo and App Title */}
+            <div className="flex items-center gap-4">
+              <div className="w-13 h-13 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-2xl shadow-inner">
+                AI
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                  AI Tutor
+                </h1>
+                <p className="text-xs sm:text-sm font-semibold text-amber-300">
+                  Accessible Eye-Gaze & Voice Learning for Neurodiverse Students
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-3">
-                AI Tutor
-              </h1>
-              <p className="text-base sm:text-lg font-medium text-amber-300">
-                Accessible Learning for Neurodiverse Students (Std 6–12)
-              </p>
-            </div>
-          </div>
 
-          {/* Backend Status Badge */}
-          <div className="flex items-center gap-3 bg-[#131f38] px-5 py-3 rounded-2xl border-2 border-slate-700 shadow-md">
-            <div className="flex items-center gap-2.5">
-              <span
-                className={`w-4 h-4 rounded-full transition-colors ${
-                  backendStatus === "connected"
-                    ? "bg-emerald-400 shadow-[0_0_12px_#34d399]"
-                    : backendStatus === "checking"
-                    ? "bg-amber-400 animate-pulse"
-                    : "bg-rose-500 shadow-[0_0_12px_#f43f5e]"
-                }`}
-                aria-hidden="true"
+            {/* Top Bar Quick Controls & Status */}
+            <div className="flex flex-wrap items-center gap-3">
+              <GazePauseBar
+                onOpenSettings={() => setIsSettingsOpen(true)}
+                onOpenCalibration={() => setIsCalibrationOpen(true)}
+                onSetCenter={() => webcamHandleRef.current?.startSetCenter()}
+                isCalibrated={!!mapper}
               />
-              <span className="text-lg font-bold">
-                Backend:{" "}
+
+              {/* Backend Status Badge */}
+              <div className="hidden md:flex items-center gap-2.5 bg-[#131f38] px-3.5 py-2 rounded-xl border border-slate-700 text-xs font-bold">
                 <span
-                  className={
+                  className={`w-3 h-3 rounded-full ${
                     backendStatus === "connected"
-                      ? "text-emerald-400 font-extrabold"
+                      ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
                       : backendStatus === "checking"
-                      ? "text-amber-300 font-extrabold"
-                      : "text-rose-400 font-extrabold"
-                  }
-                >
-                  {backendStatus === "connected"
-                    ? "Connected (/health OK)"
-                    : backendStatus === "checking"
-                    ? "Checking..."
-                    : "Disconnected"}
+                      ? "bg-amber-400 animate-pulse"
+                      : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="text-slate-300">
+                  Backend:{" "}
+                  <span
+                    className={
+                      backendStatus === "connected"
+                        ? "text-emerald-400"
+                        : backendStatus === "checking"
+                        ? "text-amber-300"
+                        : "text-rose-400"
+                    }
+                  >
+                    {backendStatus === "connected" ? "OK" : backendStatus === "checking" ? "..." : "Offline"}
+                  </span>
                 </span>
-              </span>
+                <button
+                  id="refresh-health-btn"
+                  onClick={checkBackendHealth}
+                  className="ml-1 text-slate-400 hover:text-amber-300 cursor-pointer"
+                  title="Refresh backend status"
+                >
+                  🔄
+                </button>
+              </div>
             </div>
-            <button
-              id="refresh-health-btn"
-              onClick={checkBackendHealth}
-              className="ml-2 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-sm font-bold text-amber-300 border border-slate-600 rounded-lg active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-amber-400 cursor-pointer"
-              title="Refresh health status"
-            >
-              Check Now
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Two-Panel Content Workspace */}
-      <main className="max-w-7xl mx-auto w-full px-6 py-6 flex-1 flex flex-col gap-6">
-        {/* Two-Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch">
-          {/* Left Panel: Live Mirrored Webcam */}
-          <div className="lg:col-span-5 flex flex-col">
-            <WebcamView />
+        {/* Calibration Prompt Banner if not calibrated */}
+        {!mapper && isCameraActive && (
+          <div className="max-w-7xl mx-auto w-full px-6 pt-4">
+            <div className="bg-gradient-to-r from-amber-500/20 via-[#131f38] to-amber-500/20 border-3 border-amber-400 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl" role="img" aria-label="Eyes Icon">
+                  👀
+                </span>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white">
+                    Set Up Your Eyes First!
+                  </h2>
+                  <p className="text-sm font-semibold text-slate-300">
+                    A quick 9-point calibration maps your screen coordinates for effortless dwell navigation.
+                  </p>
+                </div>
+              </div>
+              <GazeButton
+                id="banner-calibrate-btn"
+                onClick={() => setIsCalibrationOpen(true)}
+                label="Start Calibration"
+                icon="🎯"
+                variant="accent"
+                size="compact"
+                className="!min-h-[56px] text-base"
+              />
+            </div>
           </div>
+        )}
 
-          {/* Right Panel: AI Tutor Interactive / Chat Workspace Placeholder */}
-          <div className="lg:col-span-7 flex flex-col bg-[#0b1120] rounded-3xl border-4 border-slate-800 p-6 shadow-2xl justify-between">
-            <div>
-              <div className="flex items-center justify-between pb-4 border-b-2 border-slate-800 mb-5">
+        {/* Main Two-Panel Layout */}
+        <main className="max-w-7xl mx-auto w-full px-6 py-6 flex-1 flex flex-col gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-[580px]">
+            {/* Left Panel: Camera & Gaze Tracker */}
+            <div className="lg:col-span-5 flex flex-col">
+              <WebcamView
+                ref={webcamHandleRef}
+                sharedGazePointRef={sharedGazePointRef}
+                onMapperChange={setMapper}
+                onCameraActiveChange={setIsCameraActive}
+                isCalibrationOpen={isCalibrationOpen}
+                onCalibrationOpenChange={setIsCalibrationOpen}
+              />
+            </div>
+
+            {/* Right Panel: AI Tutor Workspace with Gaze Edge Scrolling */}
+            <div className="lg:col-span-7 flex flex-col bg-[#0b1120] rounded-3xl border-4 border-slate-800 shadow-2xl overflow-hidden">
+              {/* Workspace Header */}
+              <div className="flex items-center justify-between p-5 border-b-2 border-slate-800 bg-[#0d1527]">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl" role="img" aria-label="AI Tutor Chat">
                     💬
                   </span>
                   <div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    <h2 className="text-2xl font-black text-white tracking-tight">
                       AI Tutor Workspace
                     </h2>
-                    <p className="text-sm font-semibold text-amber-300">
+                    <p className="text-xs sm:text-sm font-semibold text-amber-300">
                       Standard 6–12 Curriculum & Questions
                     </p>
                   </div>
@@ -192,164 +256,216 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Dynamic View Content based on selection */}
-              {activeTab === "home" && (
-                <div className="space-y-4">
-                  <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6">
-                    <h3 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                      <span>👋</span> Hello! Ready to learn?
-                    </h3>
-                    <p className="text-lg text-slate-300 leading-relaxed">
-                      AI Tutor is your accessible study assistant. Start the camera on the left to prepare for eye gaze navigation, or choose a mode below.
-                    </p>
-                  </div>
-
-                  {/* Empty chat placeholder for later phases */}
-                  <div className="border-2 border-dashed border-slate-700 rounded-2xl p-8 text-center bg-[#070b14]/60">
-                    <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-3xl mx-auto mb-3">
-                      💡
+              {/* Scrollable Workspace Content with Smooth Edge Gaze Scrolling */}
+              <GazeScrollArea className="flex-1 min-h-[420px]">
+                {/* Home View */}
+                {activeTab === "home" && (
+                  <div className="space-y-6">
+                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6 shadow-md">
+                      <h3 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
+                        <span>👋</span> Hello! Ready to learn?
+                      </h3>
+                      <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
+                        AI Tutor is your accessible study assistant. Start the camera on the left, then look at any button below for a second to activate it hands-free!
+                      </p>
                     </div>
-                    <h4 className="text-xl font-black text-white mb-1">
-                      Chat & Tutor Area (Ready for Phase 3)
-                    </h4>
-                    <p className="text-base text-slate-400 max-w-md mx-auto">
-                      In upcoming phases, your questions and textbook explanations will appear here with voice narration and gaze dwell-selection.
-                    </p>
-                  </div>
-                </div>
-              )}
 
-              {activeTab === "learn" && (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-bold text-white">Textbook Library</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-amber-400/40">
-                      <h4 className="text-xl font-bold text-amber-300 mb-1">TN State Board</h4>
-                      <p className="text-slate-300 text-sm mb-3">Standards 6 – 12</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Std 6", "Std 7", "Std 8", "Std 9", "Std 10", "Std 11", "Std 12"].map((s) => (
-                          <span key={s} className="px-2.5 py-1 bg-slate-800 text-amber-300 text-xs font-bold rounded-lg border border-slate-600">
-                            {s}
-                          </span>
-                        ))}
+                    <div className="space-y-3">
+                      <h4 className="text-base font-black text-amber-300 uppercase tracking-wider">
+                        Quick Gaze Actions (Look to Choose)
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <GazeButton
+                          id="quick-goto-learn-btn"
+                          onClick={() => setActiveTab("learn")}
+                          label="Open Textbook Library"
+                          subtitle="TN SCERT & CBSE Standards 6 to 12"
+                          icon="📖"
+                          variant="card"
+                          size="large"
+                        />
+                        <GazeButton
+                          id="quick-goto-ask-btn"
+                          onClick={() => setActiveTab("ask")}
+                          label="Ask a Question"
+                          subtitle="Curriculum RAG assistant with citations"
+                          icon="💬"
+                          variant="card"
+                          size="large"
+                        />
                       </div>
                     </div>
-                    <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-cyan-400/40">
-                      <h4 className="text-xl font-bold text-cyan-300 mb-1">CBSE / NCERT</h4>
-                      <p className="text-slate-300 text-sm mb-3">Standards 6 – 12</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {["Std 6", "Std 7", "Std 8", "Std 9", "Std 10", "Std 11", "Std 12"].map((s) => (
-                          <span key={s} className="px-2.5 py-1 bg-slate-800 text-cyan-300 text-xs font-bold rounded-lg border border-slate-600">
-                            {s}
-                          </span>
-                        ))}
+
+                    <div className="border-2 border-dashed border-slate-700 rounded-2xl p-6 bg-[#070b14]/60 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-3xl mx-auto mb-2">
+                        💡
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "ask" && (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-bold text-white">Ask AI Tutor</h3>
-                  <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700">
-                    <p className="text-sm font-semibold text-slate-300 mb-2">Example Query</p>
-                    <input
-                      type="text"
-                      readOnly
-                      value="Explain photosynthesis from Tamil Nadu Class 10 Science Chapter 12"
-                      className="w-full bg-[#070b14] border-2 border-slate-600 rounded-xl p-3 text-lg text-slate-300 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "listen" && (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-bold text-white">Audio & Speech Center</h3>
-                  <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700">
-                    <p className="text-base text-slate-300 mb-2">Speech Pacing Options</p>
-                    <div className="flex gap-2">
-                      {["0.8x (Gentle)", "1.0x (Normal)", "1.2x (Brisk)"].map((speed) => (
-                        <button key={speed} className="px-3 py-2 bg-slate-800 text-white font-bold text-sm rounded-lg border border-slate-600">
-                          {speed}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Status Bar at bottom of right panel */}
-            <div className="mt-6 pt-4 border-t-2 border-slate-800 flex items-center justify-between text-xs sm:text-sm text-slate-400 font-semibold">
-              <span>Ready for multimodal interaction</span>
-              <span>{lastChecked ? `Status checked: ${lastChecked}` : ""}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Big Navigation Bar (High-Contrast Buttons min-h-[64px]) */}
-        <section aria-label="Main Navigation Controls" className="mt-2">
-          <h2 className="text-lg font-bold text-slate-300 mb-3 uppercase tracking-wider">
-            Accessible Navigation Controls
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  id={`nav-${item.id}-btn`}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`min-h-[64px] flex items-center justify-between p-5 rounded-2xl border-4 text-left transition-all duration-200 focus:outline-none focus:ring-8 focus:ring-amber-400 cursor-pointer ${
-                    isActive
-                      ? "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.35)] scale-[1.02]"
-                      : "bg-[#0d1527] text-white border-slate-700 hover:border-amber-400 hover:bg-[#131f38] shadow-md"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl" role="img" aria-label={item.label}>
-                      {item.icon}
-                    </span>
-                    <div>
-                      <div className="text-2xl font-black">{item.label}</div>
-                      <p
-                        className={`text-xs font-medium leading-snug ${
-                          isActive ? "text-slate-900" : "text-slate-400"
-                        }`}
-                      >
-                        {item.desc}
+                      <h4 className="text-lg font-black text-white mb-1">
+                        Eye Control Tips
+                      </h4>
+                      <p className="text-sm text-slate-400 max-w-md mx-auto">
+                        • Gaze at a button to fill its progress ring.<br />
+                        • Natural blinks won&apos;t cancel your dwell (250ms grace period).<br />
+                        • Look at top or bottom bands to smoothly scroll.
                       </p>
                     </div>
                   </div>
-                  <span
-                    className={`text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                      isActive
-                        ? "bg-slate-950 text-amber-300 border-slate-900"
-                        : "bg-slate-800 text-slate-300 border-slate-600"
-                    }`}
-                  >
-                    {item.tag}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      </main>
+                )}
 
-      {/* Accessible Footer */}
-      <footer className="border-t-2 border-slate-800 bg-[#0d1527] px-6 py-5 text-center text-slate-400 text-sm">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <p className="font-bold text-slate-300">
-            AI Tutor © 2026 Sivaranjani. Open Source under MIT License.
-          </p>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Designed for Neurodiverse Learners • Privacy First (100% Client-Side Gaze Tracking)
-          </p>
-        </div>
-      </footer>
-    </div>
+                {/* Learn View: Interactive Gaze-Operable Chooser */}
+                {activeTab === "learn" && <LearnChooser />}
+
+                {/* Ask View: Coming Soon */}
+                {activeTab === "ask" && (
+                  <div className="space-y-6">
+                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6">
+                      <div className="w-16 h-16 rounded-2xl bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-3xl mb-3">
+                        💬
+                      </div>
+                      <h3 className="text-2xl font-black text-white mb-2">
+                        Ask AI Tutor (RAG Textbook Assistant)
+                      </h3>
+                      <p className="text-base text-slate-300 leading-relaxed mb-4">
+                        In upcoming phases, you will be able to speak or type any question from your selected textbook and receive clear, cited answers with page numbers.
+                      </p>
+
+                      <div className="bg-[#070b14] border-2 border-slate-700 rounded-xl p-4 mb-4">
+                        <span className="text-xs font-bold text-amber-300 uppercase tracking-wider block mb-1">
+                          Example Questions Ready for Next Phase:
+                        </span>
+                        <ul className="text-sm text-slate-300 space-y-1.5 list-disc list-inside">
+                          <li>Explain photosynthesis from TN Class 10 Science Chapter 12</li>
+                          <li>What is the Pythagoras theorem and its proof in CBSE Class 9 Maths?</li>
+                          <li>Describe the fundamental rights in Indian Constitution (Social Science Std 8)</li>
+                        </ul>
+                      </div>
+
+                      <GazeButton
+                        id="ask-back-learn-btn"
+                        onClick={() => setActiveTab("learn")}
+                        label="Select Your Textbook in Learn Mode"
+                        icon="📖"
+                        variant="accent"
+                        size="default"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Listen View: Coming Soon */}
+                {activeTab === "listen" && (
+                  <div className="space-y-6">
+                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6">
+                      <div className="w-16 h-16 rounded-2xl bg-emerald-400/20 border border-emerald-400/50 flex items-center justify-center text-3xl mb-3">
+                        🔊
+                      </div>
+                      <h3 className="text-2xl font-black text-white mb-2">
+                        Listen & Audio Narration Center
+                      </h3>
+                      <p className="text-base text-slate-300 leading-relaxed mb-4">
+                        Text-to-speech narration with customized pacing (0.8x gentle, 1.0x normal, 1.2x brisk) for neurodiverse auditory comfort.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                        <GazeButton
+                          id="listen-speed-gentle"
+                          onClick={() => {}}
+                          label="0.8x Gentle"
+                          icon="🐢"
+                          variant="card"
+                          size="compact"
+                        />
+                        <GazeButton
+                          id="listen-speed-normal"
+                          onClick={() => {}}
+                          label="1.0x Normal"
+                          icon="🚶"
+                          variant="active"
+                          size="compact"
+                        />
+                        <GazeButton
+                          id="listen-speed-brisk"
+                          onClick={() => {}}
+                          label="1.2x Brisk"
+                          icon="🐇"
+                          variant="card"
+                          size="compact"
+                        />
+                      </div>
+
+                      <GazeButton
+                        id="listen-back-learn-btn"
+                        onClick={() => setActiveTab("learn")}
+                        label="Explore Textbooks to Listen"
+                        icon="📖"
+                        variant="accent"
+                        size="default"
+                      />
+                    </div>
+                  </div>
+                )}
+              </GazeScrollArea>
+
+              {/* Status Bar */}
+              <div className="p-3 border-t-2 border-slate-800 bg-[#0d1527] flex items-center justify-between text-xs text-slate-400 font-semibold">
+                <span>Eye-gaze navigation active • Dwell on any button to select</span>
+                <span>{lastChecked ? `Backend checked: ${lastChecked}` : ""}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Gaze Navigation Bar (min 72px height, generous spacing >= 24px) */}
+          <section aria-label="Main Navigation Controls" className="mt-2">
+            <h2 className="text-base font-black text-slate-300 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <span>🧭</span> Primary Navigation Controls
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <GazeButton
+                    key={item.id}
+                    id={`nav-${item.id}-btn`}
+                    onClick={() => setActiveTab(item.id)}
+                    label={item.label}
+                    subtitle={item.desc}
+                    icon={item.icon}
+                    tag={item.tag}
+                    variant={isActive ? "active" : "card"}
+                    size="large"
+                    priority={isActive ? 10 : 0}
+                    className="!min-h-[80px]"
+                  />
+                );
+              })}
+            </div>
+          </section>
+        </main>
+
+        {/* Settings Modal */}
+        <GazeSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onOpenCalibration={() => {
+            setIsSettingsOpen(false);
+            setIsCalibrationOpen(true);
+          }}
+          onSetCenter={() => webcamHandleRef.current?.startSetCenter()}
+          isCameraActive={isCameraActive}
+        />
+
+        {/* Accessible Footer */}
+        <footer className="border-t-2 border-slate-800 bg-[#0d1527] px-6 py-5 text-center text-slate-400 text-sm">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <p className="font-bold text-slate-300">
+              AI Tutor © 2026. Accessible Learning for Neurodiverse Students.
+            </p>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Hands-Free Eye Gaze Dwell Navigation • 100% In-Browser Privacy
+            </p>
+          </div>
+        </footer>
+      </div>
+    </GazeProvider>
   );
 }

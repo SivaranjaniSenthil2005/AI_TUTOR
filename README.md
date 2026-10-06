@@ -259,6 +259,73 @@ AI Tutor translates real-time gaze features (iris position, head yaw/pitch, and 
 
 ---
 
+## Eye-Controlled UI & Dwell Selection (Phase 6)
+
+AI Tutor allows neurodiverse learners to operate the entire application using eye gaze alone. Looking at any button highlights the target, displays a filling circular or linear progress indicator, and triggers activation automatically. Mouse and keyboard interactions remain fully active as seamless fallbacks.
+
+```
+[ Gaze Point (x, y) ] ──> [ Hit Testing & Expanded Bounds (+24px) ]
+                                      │
+                                      ▼
+                        [ Dwell State Machine ]
+                  idle ──> hovering ──> dwelling ──> activated ──> cooldown
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              ▼                                               ▼
+    [ Stickiness (+40px Exit) ]                   [ Blink Grace Period (250ms) ]
+              │                                               │
+              └───────────────────────┬───────────────────────┘
+                                      │
+                                      ▼
+                      [ Target onActivate & Sound Chime ]
+```
+
+### Core Gaze UI Engine (`frontend/lib/gazeui/`)
+
+1. **Target Registry (`registry.ts`):**
+   - Interactive components register their DOM element, priority, hit padding, and activation callback on mount, and unregister on unmount.
+2. **Hit Testing & Caching (`hitTest.ts`):**
+   - Evaluates gaze point against expanded target boundaries (default `+24px` padding) to forgive webcam estimation inaccuracy.
+   - When multiple targets overlap, the engine calculates Euclidean distance from the gaze point to each element's center and selects the closest target.
+   - Target bounding rects are cached per animation frame and invalidated on scroll or resize to eliminate layout thrashing.
+3. **Dwell State Machine (`dwell.ts`):**
+   - **Progressive Dwell:** Dwell progress advances from `0.0` to `1.0` based on the configured dwell duration (default `1.2s`, configurable from `0.6s` to `3.0s`).
+   - **Stickiness Margin:** Once dwell starts on a target, the gaze must cross a larger exit margin (`+40px`) before progress cancels, preventing natural eye micro-jitter from aborting selections.
+   - **Grace Period & Blink Resilience:** If the user blinks or glances away briefly for $< 250\text{ ms}$, progress freezes in place instead of resetting. If the gaze remains lost longer, progress decays smoothly to zero.
+   - **Cooldown & Lock:** Upon reaching `1.0`, the target fires `onActivate` once and enters a `1000 ms` cooldown. The user must glance away before that target can re-arm, preventing runaway double-fires.
+4. **Web Audio Synthesizer (`sound.ts`):**
+   - Synthesizes subtle feedback directly through the Web Audio API without downloading external sound files:
+     - Soft tick on dwell initiation
+     - Cheerful two-tone harmonic chime (D5 $\rightarrow$ A5) on successful activation
+     - Mellow tone on pause / rising chime on resume
+5. **High-Performance React Integration (`GazeContext.tsx` & `useGazeTarget.ts`):**
+   - Runs on `requestAnimationFrame` without triggering global re-renders on every frame.
+   - Target components subscribe individually to progress events to animate circular SVG progress rings and highlight borders efficiently.
+
+### Midas Touch Protection
+
+To prevent accidental activations when students are simply reading or gazing across the interface:
+- **Prominent Pause Button:** Always visible in the navigation header (shortcut: `[P]`).
+- **Dimmed Gaze Dot:** When paused, the gaze dot dims and dwell activations are locked.
+- **Safe 2x Resume Dwell:** A large "Resume Eye Control" banner requires a $2\times$ longer dwell duration (e.g. `2.4s`) to resume hands-free control, preventing accidental resumption.
+- **Automatic Face Absence Pause:** If the student steps away or turns their head for more than 3 seconds, eye control pauses automatically with a friendly message and resumes as soon as their face returns.
+
+### Gaze Edge Scrolling (`GazeScrollArea.tsx`)
+
+- Top and bottom bands (`Look Here to Scroll Up / Down`) smoothly scroll workspace content when gazed at.
+- Scroll velocity ramps up smoothly (from $3\text{ px/frame}$ to $18\text{ px/frame}$) the longer the gaze remains in the zone, respecting the eye control pause state.
+
+### Gaze-Friendly Design Rules
+
+AI Tutor enforces strict ergonomic principles for webcam eye tracking:
+- **Maximum ~6 Targets per View:** Minimizes visual clutter and maximizes spatial target separation.
+- **Generous Target Spacing:** Minimum gap of at least $24\text{ px}$ between adjacent targets to eliminate neighbor mis-hits.
+- **Large Accessible Buttons:** Minimum target height of $72\text{ px}$ with clear icons, large bold typography, and distinct focus rings.
+- **Corner Avoidance:** Important interactive controls are never placed at the extreme screen corners where webcam accuracy is lowest.
+- **Full Fallback Support:** All `GazeButton` elements are standard semantic `<button>` elements that support mouse clicks and keyboard navigation (`Tab`, `Enter`, `Space`).
+
+---
+
 ## Data Sources and Usage
 
 - **Curriculum Textbooks:** School textbooks for Tamil Nadu State Board (SCERT) and CBSE / NCERT (Standards 6 through 12) are **NOT** included in this repository.
