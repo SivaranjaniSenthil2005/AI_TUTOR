@@ -37,6 +37,28 @@ export interface UseFaceLandmarksReturn {
   latestDataRef: React.RefObject<FaceLandmarkData | null>;
 }
 
+// Suppress benign MediaPipe / TensorFlow Lite WASM C++ info messages routed to stderr/console.error
+if (typeof window !== "undefined") {
+  const globalConsole = window.console;
+  if (globalConsole && !(globalConsole as unknown as { __mediapipe_filtered?: boolean }).__mediapipe_filtered) {
+    (globalConsole as unknown as { __mediapipe_filtered?: boolean }).__mediapipe_filtered = true;
+    const originalConsoleError = globalConsole.error;
+    globalConsole.error = (...args: unknown[]) => {
+      const first = typeof args[0] === "string" ? args[0] : "";
+      if (
+        first.includes("INFO: Created TensorFlow Lite") ||
+        first.includes("XNNPACK delegate") ||
+        first.includes("TensorFlow Lite") ||
+        first.startsWith("INFO:")
+      ) {
+        globalConsole.info(...args);
+        return;
+      }
+      originalConsoleError.apply(globalConsole, args);
+    };
+  }
+}
+
 export function useFaceLandmarks({
   videoElement,
   enabled = true,
