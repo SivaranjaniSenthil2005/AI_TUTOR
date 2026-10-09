@@ -1,0 +1,48 @@
+# Example Gold Evaluation Set for AI Tutor RAG Evaluation
+# Place your real evaluation questions in data/eval/gold_set.yaml (gitignored).
+
+items:
+  - question: "Why do stars twinkle in the night sky?"
+    board: "cbse"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 10
+    expected_chapter_title: "Human Eye and the Colourful World"
+    expected_pages: [178, 179]
+    notes: "Atmospheric refraction of starlight."
+
+  - question: "What is the function of the human cornea and lens?"
+    board: "cbse"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 10
+    expected_chapter_title: "Human Eye and the Colourful World"
+    expected_pages: [176, 177]
+    notes: "Eye anatomy and focal adjustment."
+
+  - question: "Explain Newton's second law of motion with mathematical formula."
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Laws of Motion"
+    expected_pages: [4, 5]
+    notes: "Force equals mass times acceleration."
+
+  - question: "What is the difference between power sharing in Belgium and Sri Lanka?"
+    board: "cbse"
+    class_level: 10
+    subject: "social_science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Power Sharing"
+    expected_pages: [2, 3, 4]
+    notes: "Majoritarianism vs Accommodation."
+
+  - question: "What were the main causes of the First World War in 1914?"
+    board: "tn"
+    class_level: 10
+    subject: "social_science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Outbreak of World War I and Its Aftermath"
+    expected_pages: [1, 2, 3]
+    notes: "Imperial rivalry and European alliances."

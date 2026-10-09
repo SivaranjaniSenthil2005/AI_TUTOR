@@ -487,6 +487,87 @@ All network requests strictly enforce:
 
 ---
 
+## Hybrid Retrieval & RAG Core (Phase 9)
+
+AI Tutor features a hybrid retrieval pipeline combining dense semantic vector search (ChromaDB + BGE embeddings) and sparse keyword search (BM25 with Lucene smoothing), fused via Reciprocal Rank Fusion (RRF), shaped by an educational block policy, and reranked using a cross-encoder model.
+
+```
+[ User Query ]
+      │
+      ├─────────────────────────────────────────┐
+      ▼                                         ▼
+[ Dense Vector Search (ChromaDB) ]   [ Sparse Keyword Search (BM25) ]
+(BAAI/bge-small-en-v1.5, Top 20)     (Partition-Scoped BM25, Top 20)
+      │                                         │
+      └────────────────────┬────────────────────┘
+                           ▼
+            [ Reciprocal Rank Fusion (RRF) ]
+                Score = Σ 1 / (k + rank)
+                           │
+                           ▼
+          [ Educational Block Type Policy ]
+    (Excludes exercises; boosts summary/glossary)
+                           │
+                           ▼
+         [ Deduplication & Section Capping ]
+         (Max 2 chunks per textbook section)
+                           │
+                           ▼
+      [ Cross-Encoder Reranker (Top Fused K) ]
+     (cross-encoder/ms-marco-MiniLM-L-6-v2)
+                           │
+                           ▼
+           [ Top K Grounded Curriculum Chunks ]
+```
+
+### 1. Building the Corpus Index
+
+To index all processed textbook chunks in `data/processed/` into ChromaDB and BM25:
+
+```bash
+# Index all available curriculum partitions
+python -m app.rag.cli index --all
+
+# Or filter by board, class level, or subject
+python -m app.rag.cli index --board cbse --class 10 --subject science
+```
+
+### 2. Searching the Index from the CLI
+
+```bash
+# Run a hybrid search with cross-encoder reranking
+python -m app.rag.cli search "why does light bend in water" --board cbse --class 10 --subject science --mode hybrid_rerank --k 5
+
+# Inspect per-stage candidates and rankings with --debug
+python -m app.rag.cli search "causes of first world war" --board tn --class 10 --subject social_science --debug
+```
+
+Supported retrieval modes:
+- `vector_only`: Dense semantic search using BGE embeddings.
+- `bm25_only`: Fast keyword search over partition BM25 indexes.
+- `hybrid`: Parallel vector + BM25 search fused with RRF (k=60).
+- `hybrid_rerank` *(default)*: Hybrid RRF candidates rescored with cross-encoder.
+
+### 3. Model Downloads & Storage Notes
+
+- **Embedding Model:** `BAAI/bge-small-en-v1.5` (~130 MB). Embeds chapter/section context headers alongside text.
+- **Reranker Model:** `cross-encoder/ms-marco-MiniLM-L-6-v2` (~80 MB).
+- **First-Run Behavior:** Models download automatically on first use to the local HuggingFace cache directory (`~/.cache/huggingface/hub/`) and execute on CPU or GPU seamlessly.
+
+### 4. Benchmark Evaluation Suite
+
+AI Tutor includes an evaluation harness measuring **Hit@1**, **Hit@3**, **Hit@5**, and **Mean Reciprocal Rank (MRR)**:
+
+```bash
+# 1. Generate a draft gold template sampling real chunks
+python -m app.rag.eval.make_gold_template --board cbse --class 10 --subject science --n 10
+
+# 2. Run evaluation across all 4 retrieval modes
+python -m app.rag.eval.run_eval --file data/eval/gold_set.yaml
+```
+
+---
+
 ## Privacy & Neurodiversity-First Design
 
 - **Camera & Video Privacy:** All gaze and facial landmark processing runs entirely **on-device inside the browser** using client-side WebAssembly/WebGPU. No raw video feed, frames, or biometric recordings are ever uploaded, transmitted, or stored on any server.
