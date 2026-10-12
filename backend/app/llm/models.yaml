@@ -1,0 +1,65 @@
+# ==============================================================================
+# AI Tutor LLM Model Registry & Provider Fallback Chain Configuration
+# ==============================================================================
+# IMPORTANT: Model names change over time as providers deprecate older versions
+# and release newer ones. Keep all model names ONLY in this configuration file.
+# To update or change models, consult the respective provider documentation:
+#   - Google Gemini: https://ai.google.dev/gemini-api/docs/models/gemini
+#   - Groq:          https://console.groq.com/docs/models
+#   - Mistral AI:    https://docs.mistral.ai/getting-started/models/
+#   - OpenAI:        https://platform.openai.com/docs/models
+# ==============================================================================
+
+# Priority order for multi-provider fallback.
+# The router attempts providers in this exact sequence. If a provider lacks an
+# API key, or encounters transient 429/5xx errors or circuit breaker trips,
+# the router automatically fails over to the next configured provider in line.
+provider_chain:
+  - gemini
+  - groq
+  - mistral
+  - openai
+
+# Per-provider model specifications and parameters
+providers:
+  gemini:
+    name: "Google Gemini"
+    # LiteLLM format: gemini/<model-id>
+    # Fast flash-class model recommended for quick, patient student explanations
+    model: "gemini/gemini-2.5-flash"
+    fallback_model: "gemini/gemini-1.5-flash"
+    timeout_seconds: 25.0
+    temperature: 0.2
+    max_tokens: 1024
+    env_key: "GEMINI_API_KEY"
+
+  groq:
+    name: "Groq"
+    # LiteLLM format: groq/<model-id>
+    # High-speed Llama 3 model
+    model: "groq/llama-3.3-70b-versatile"
+    fallback_model: "groq/llama-3.1-8b-instant"
+    timeout_seconds: 25.0
+    temperature: 0.2
+    max_tokens: 1024
+    env_key: "GROQ_API_KEY"
+
+  mistral:
+    name: "Mistral AI"
+    # LiteLLM format: mistral/<model-id>
+    # Efficient European small-class model
+    model: "mistral/mistral-small-latest"
+    timeout_seconds: 25.0
+    temperature: 0.2
+    max_tokens: 1024
+    env_key: "MISTRAL_API_KEY"
+
+  openai:
+    name: "OpenAI"
+    # LiteLLM format: openai/<model-id> or <model-id>
+    # Highly capable mini model
+    model: "openai/gpt-4o-mini"
+    timeout_seconds: 25.0
+    temperature: 0.2
+    max_tokens: 1024
+    env_key: "OPENAI_API_KEY"

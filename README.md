@@ -568,6 +568,138 @@ python -m app.rag.eval.run_eval --file data/eval/gold_set.yaml
 
 ---
 
+## LLM Layer & Grounded Answer Generation (Phase 10)
+
+AI Tutor features a multi-provider LLM generation engine with automatic fallback, strict curriculum grounding, prompt injection defense, and citation verification.
+
+```
+[ Student Question ]
+       │
+       ▼
+[ Scope Validator (Class 10 Science / Social Science Only) ]
+       │
+       ▼
+[ Guardrails & Sanitization (Length, Safety Filter) ]
+       │
+       ▼
+[ Phase 9 Hybrid Retrieval (Vector + BM25 + RRF + Cross-Encoder) ]
+       │
+       ├─ No relevant context / low reranker score? ──► [ Honest Canned Decline ]
+       ▼
+[ Prompt Construction (DATA ONLY blocks + Injection Defense) ]
+       │
+       ▼
+[ Multi-Provider LLM Router ]
+  Chain: Gemini ──► Groq ──► Mistral ──► OpenAI ──► Offline Mock
+  (Timeouts, Exponential Backoff, Circuit Breakers, Pre-Token Failover)
+       │
+       ▼
+[ Citation Extractor & Grounding Verification ]
+  (Extracts [n] markers, maps to textbook pages, flags grounding)
+       │
+       ▼
+[ Response: Typed AnswerResult JSON or Server-Sent Events (SSE) Stream ]
+```
+
+### 1. Central Scope & Boundaries
+
+The project scope is strictly maintained in a single central module: [`backend/app/scope.py`](backend/app/scope.py).
+- **Standards:** Class 10 only (`SUPPORTED_CLASSES = {10}`)
+- **Subjects:** Science and Social Science only (`SUPPORTED_SUBJECTS = {"science": "Science", "social_science": "Social Science"}`)
+- **Boards:** Tamil Nadu State Board (`tn`) and CBSE / NCERT (`cbse`)
+- **Medium:** English
+
+All API endpoints (`/api/retrieve`, `/api/corpus`, `/api/ask`, `/api/ask/stream`), CLI commands, and validators enforce these boundaries, returning friendly messages (HTTP 422) whenever out-of-scope requests are made.
+
+### 2. Provider Fallback Chain & `models.yaml`
+
+Provider order, model identifiers, timeouts, and generation parameters are defined in [`backend/app/llm/models.yaml`](backend/app/llm/models.yaml):
+
+```yaml
+provider_chain:
+  - gemini
+  - groq
+  - mistral
+  - openai
+
+providers:
+  gemini:
+    name: "Google Gemini"
+    model: "gemini/gemini-2.5-flash"
+    timeout_seconds: 25.0
+  groq:
+    name: "Groq"
+    model: "groq/llama-3.3-70b-versatile"
+    timeout_seconds: 25.0
+  mistral:
+    name: "Mistral AI"
+    model: "mistral/mistral-small-latest"
+    timeout_seconds: 25.0
+  openai:
+    name: "OpenAI"
+    model: "openai/gpt-4o-mini"
+    timeout_seconds: 25.0
+```
+
+> [!NOTE]
+> As model versions evolve, update model names directly in `models.yaml` without changing application code.
+
+### 3. API Keys & Free Provider Access
+
+1. **Google Gemini (Free tier):** Obtain an API key at [Google AI Studio](https://aistudio.google.com/).
+2. **Groq (Free tier):** Obtain an API key at [Groq Console](https://console.groq.com/).
+3. **Configure Environment:**
+   Add keys to `backend/.env` (which is strictly gitignored):
+   ```env
+   GEMINI_API_KEY=your_gemini_key_here
+   GROQ_API_KEY=your_groq_key_here
+   MISTRAL_API_KEY=
+   OPENAI_API_KEY=
+   ```
+4. **Deterministic Mock Fallback:** If no API keys are configured, the router automatically activates [`MockProvider`](backend/app/llm/mock_provider.py), generating grounded answers using the retrieved context so the entire system works offline.
+
+### 4. How Failover & Circuit Breaking Works
+
+- **Transient Errors (429, 5xx, timeouts):** Retries up to 2 times with exponential backoff and randomized jitter before failing over to the next provider.
+- **Non-Transient Errors (401, 403, Insufficient Quota):** Fails over immediately to the next provider without wasting retry attempts.
+- **Circuit Breaker:** After 3 consecutive failures, a provider's circuit breaker trips to `OPEN` for a 60-second cooldown period, bypassing it on subsequent requests.
+- **Streaming Failover:** If a provider fails **before emitting the first token**, the router fails over to the next provider. If a provider fails **mid-stream**, the stream terminates cleanly with an error event to prevent interleaving two models' outputs.
+
+### 5. Grounding, Citations & Prompt Injection Defense
+
+- **Context Isolation:** Context blocks are injected as numbered blocks (`[1] (CBSE Class 10 Science, Chapter 3, p. 45-46) <text>`) enclosed inside explicit `DATA ONLY` boundaries.
+- **Prompt Injection Defense:** Student questions and context blocks are treated strictly as data. Instructions such as "ignore previous rules" or "tell a joke" are ignored.
+- **Citation Parsing:** The engine extracts `[n]` bracket markers, verifies that $1 \le n \le \text{num\_chunks}$, and resolves them to textbook titles, chapters, and page numbers.
+- **No-Context Shortcut:** If retrieval finds no relevant chunks, or the top cross-encoder score falls below the threshold, the LLM is skipped entirely and an honest "not found in your Class 10 textbook" message is returned.
+
+### 6. Streaming API & Server-Sent Events (SSE)
+
+The `POST /api/ask/stream` endpoint streams responses using standard Server-Sent Events:
+
+| Event Type | Payload | Description |
+|------------|---------|-------------|
+| `sources`  | `{"sources": [...], "total_retrieved": int}` | Candidate retrieved sources sent first |
+| `token`    | `{"delta": "text"}` | Incremental word/token delta |
+| `done`     | `{"provider": str, "grounded": bool, "sources": [...], "latency_ms": {...}}` | Final execution metadata & verified citations |
+| `error`    | `{"message": str}` | User-friendly error message on failure |
+
+### 7. CLI Usage & Failover Testing
+
+Run the CLI tool from the `backend/` directory:
+
+```bash
+# Ask a curriculum question
+python -m app.llm.cli ask "Why do metals conduct electricity?" --board cbse --subject science
+
+# Stream answer tokens in real-time
+python -m app.llm.cli ask "State Newton's first law of motion" --board tn --subject science --stream
+
+# Run multi-provider failover simulation test
+python -m app.llm.cli failover-test
+```
+
+---
+
 ## Privacy & Neurodiversity-First Design
 
 - **Camera & Video Privacy:** All gaze and facial landmark processing runs entirely **on-device inside the browser** using client-side WebAssembly/WebGPU. No raw video feed, frames, or biometric recordings are ever uploaded, transmitted, or stored on any server.

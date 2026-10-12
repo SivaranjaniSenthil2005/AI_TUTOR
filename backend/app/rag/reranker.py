@@ -31,6 +31,13 @@ class RerankerModel:
     def model(self):
         if self._model is None:
             logger.info(f"Loading cross-encoder reranker '{self.model_name}'...")
+            try:
+                import sys, unittest.mock
+                if "sklearn.metrics._pairwise_distances_reduction" not in sys.modules:
+                    sys.modules["sklearn.metrics._pairwise_distances_reduction"] = unittest.mock.MagicMock()
+                    sys.modules["sklearn.metrics._pairwise_distances_reduction._dispatcher"] = unittest.mock.MagicMock()
+            except Exception:
+                pass
             from sentence_transformers import CrossEncoder
 
             device = self._get_device()

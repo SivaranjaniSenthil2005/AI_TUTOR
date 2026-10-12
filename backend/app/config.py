@@ -46,12 +46,29 @@ class Settings(BaseSettings):
 
     # Privacy & Logging
     DEBUG_RETRIEVAL: bool = False
+    DEBUG_LLM: bool = False
+
+    # LLM Settings (Phase 10)
+    LLM_MODELS_CONFIG: str = str(Path(__file__).resolve().parent / "llm" / "models.yaml")
+    LLM_DEFAULT_TIMEOUT: float = 25.0
+    LLM_CIRCUIT_BREAKER_FAILURES: int = 3
+    LLM_CIRCUIT_BREAKER_COOLDOWN: float = 60.0
+    LLM_MAX_RETRIES: int = 2
+
+    # Guardrails
+    GUARDRAIL_MAX_QUESTION_LENGTH: int = 500
+    GUARDRAIL_MIN_RERANK_SCORE: float = -8.0
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[
+            str(BASE_DIR / ".env"),
+            str(Path(__file__).resolve().parent.parent / ".env"),
+            ".env",
+        ],
         env_file_encoding="utf-8",
         extra="ignore",
     )

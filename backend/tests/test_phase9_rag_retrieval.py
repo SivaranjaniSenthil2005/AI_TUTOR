@@ -301,15 +301,25 @@ def test_api_validation_and_503(tmp_path):
         json={"query": "test query", "board": "invalid_board", "class_level": 10, "subject": "science"},
     )
     assert res_bad_board.status_code == 422
+    assert "Unsupported board" in str(res_bad_board.json())
 
-    # Validation: bad class level (< 6 or > 12)
+    # Validation: bad class level (not 10)
     res_bad_class = client.post(
         "/api/retrieve",
-        json={"query": "test query", "board": "cbse", "class_level": 4, "subject": "science"},
+        json={"query": "test query", "board": "cbse", "class_level": 9, "subject": "science"},
     )
     assert res_bad_class.status_code == 422
+    assert "Unsupported class level" in str(res_bad_class.json())
 
-    # 503 on unindexed partition
+    # Validation: bad subject (not science or social_science)
+    res_bad_subject = client.post(
+        "/api/retrieve",
+        json={"query": "test query", "board": "cbse", "class_level": 10, "subject": "mathematics"},
+    )
+    assert res_bad_subject.status_code == 422
+    assert "Unsupported subject" in str(res_bad_subject.json())
+
+    # 503 on unindexed partition with valid scoped parameters
     from app.rag.vector_store import set_vector_store
     from app.rag.keyword_index import set_keyword_index
     empty_vstore = VectorStore(persist_dir=str(tmp_path / "empty_chroma"))
@@ -319,7 +329,7 @@ def test_api_validation_and_503(tmp_path):
 
     res_503 = client.post(
         "/api/retrieve",
-        json={"query": "test query", "board": "cbse", "class_level": 10, "subject": "nonexistent"},
+        json={"query": "test query", "board": "cbse", "class_level": 10, "subject": "science"},
     )
     assert res_503.status_code == 503
     assert "Corpus index is not built yet" in res_503.json()["detail"]

@@ -159,12 +159,16 @@ class CorpusIndexer:
         }
 
     def get_corpus_summary(self) -> CorpusSummary:
-        """Inspects indexed partitions and returns a complete corpus summary."""
+        """Inspects indexed partitions and returns a complete corpus summary within supported scope."""
+        from app.scope import is_in_scope
+
         partitions = scan_processed_chunks(processed_dir=self.processed_dir)
         info_list: List[CorpusPartitionInfo] = []
         total_chunks = 0
 
         for (b, c, s), chunks in partitions.items():
+            if not is_in_scope(board=b, class_level=c, subject=s):
+                continue
             total_chunks += len(chunks)
             chapters_map: Dict[int, str] = {}
             for chunk in chunks:

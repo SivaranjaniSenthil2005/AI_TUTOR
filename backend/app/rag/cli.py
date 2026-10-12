@@ -16,6 +16,14 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.config import settings
+from app.scope import (
+    validate_board,
+    validate_class,
+    validate_subject,
+    SUPPORTED_BOARDS,
+    SUPPORTED_CLASSES,
+    SUPPORTED_SUBJECTS,
+)
 from app.rag.schemas import RetrievalFilters
 from app.rag.indexer import CorpusIndexer
 from app.rag.retriever import HybridRetriever
@@ -28,8 +36,8 @@ console = Console()
 def index(
     all: bool = typer.Option(False, "--all", "-a", help="Index all discovered processed chunks"),
     board: Optional[str] = typer.Option(None, "--board", "-b", help="Filter by board ('tn' or 'cbse')"),
-    class_level: Optional[int] = typer.Option(None, "--class", "-c", help="Filter by class level (6-12)"),
-    subject: Optional[str] = typer.Option(None, "--subject", "-s", help="Filter by subject"),
+    class_level: Optional[int] = typer.Option(10, "--class", "-c", help="Filter by class level (Class 10 only)"),
+    subject: Optional[str] = typer.Option(None, "--subject", "-s", help="Filter by subject ('science', 'social_science')"),
     rebuild: bool = typer.Option(False, "--rebuild", "-r", help="Rebuild indexes from scratch"),
 ):
     """Indexes processed JSONL chunks into ChromaDB and BM25 partitions."""
@@ -37,6 +45,27 @@ def index(
     if not all and not (board or class_level or subject):
         console.print("[yellow]Please specify --all or filters like --board, --class, --subject.[/yellow]")
         raise typer.Exit(code=1)
+
+    if board:
+        try:
+            board = validate_board(board)
+        except ValueError as e:
+            console.print(f"[bold red]{e}[/bold red]")
+            raise typer.Exit(code=1)
+
+    if class_level is not None:
+        try:
+            class_level = validate_class(class_level)
+        except ValueError as e:
+            console.print(f"[bold red]{e}[/bold red]")
+            raise typer.Exit(code=1)
+
+    if subject:
+        try:
+            subject = validate_subject(subject)
+        except ValueError as e:
+            console.print(f"[bold red]{e}[/bold red]")
+            raise typer.Exit(code=1)
 
     indexer = CorpusIndexer()
     summary = indexer.index_corpus(
@@ -73,8 +102,8 @@ def index(
 def search(
     query: str = typer.Argument(..., help="Search query string"),
     board: str = typer.Option(..., "--board", "-b", help="Board: 'tn' or 'cbse'"),
-    class_level: int = typer.Option(..., "--class", "-c", help="Class level (6-12)"),
-    subject: str = typer.Option(..., "--subject", "-s", help="Subject"),
+    class_level: int = typer.Option(10, "--class", "-c", help="Class level (default: 10)"),
+    subject: str = typer.Option(..., "--subject", "-s", help="Subject ('science' or 'social_science')"),
     chapter: Optional[int] = typer.Option(None, "--chapter", help="Optional chapter filter"),
     mode: str = typer.Option(
         "hybrid_rerank",
@@ -89,6 +118,14 @@ def search(
     debug: bool = typer.Option(False, "--debug", "-d", help="Display per-stage debug traces"),
 ):
     """Executes a hybrid retrieval query over the curriculum index."""
+    try:
+        board = validate_board(board)
+        class_level = validate_class(class_level)
+        subject = validate_subject(subject)
+    except ValueError as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        raise typer.Exit(code=1)
+
     console.print(f"[bold cyan]AI Tutor - Hybrid Retrieval Search[/bold cyan]")
     console.print(f"Query: [bold yellow]\"{query}\"[/bold yellow]")
     console.print(f"Target: [green]{board.upper()} Class {class_level} {subject}[/green]" + (f" (Chapter {chapter})" if chapter else "") + f" | Mode: [magenta]{mode}[/magenta]\n")
