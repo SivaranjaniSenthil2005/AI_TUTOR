@@ -39,6 +39,7 @@ def index(
     class_level: Optional[int] = typer.Option(10, "--class", "-c", help="Filter by class level (Class 10 only)"),
     subject: Optional[str] = typer.Option(None, "--subject", "-s", help="Filter by subject ('science', 'social_science')"),
     rebuild: bool = typer.Option(False, "--rebuild", "-r", help="Rebuild indexes from scratch"),
+    use_enrichment: bool = typer.Option(False, "--use-enrichment", help="Embed contextual enrichment note with header and text"),
 ):
     """Indexes processed JSONL chunks into ChromaDB and BM25 partitions."""
     console.print("[bold cyan]AI Tutor - Corpus Indexer[/bold cyan]")
@@ -73,6 +74,7 @@ def index(
         class_level=class_level,
         subject=subject,
         rebuild=rebuild,
+        use_enrichment=use_enrichment,
     )
 
     console.print(f"\n[bold green][OK] Indexing complete![/bold green]")
@@ -203,6 +205,46 @@ def corpus():
         )
 
     console.print(table)
+
+
+@app.command()
+def enrich(
+    board: str = typer.Option(..., "--board", "-b", help="Board: 'tn' or 'cbse'"),
+    subject: str = typer.Option(..., "--subject", "-s", help="Subject: 'science' or 'social_science'"),
+    limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Max number of chunks to enrich in this run"),
+    delay: float = typer.Option(0.5, "--delay", help="Politeness sleep in seconds between LLM calls"),
+    mock: bool = typer.Option(False, "--mock", help="Use MockProvider for offline testing"),
+):
+    """Generates 1-2 sentence contextual situating notes for chunks and caches them on disk."""
+    import asyncio
+    from app.rag.enrichment import enrich_partition
+
+    try:
+        norm_board = validate_board(board)
+        norm_subject = validate_subject(subject)
+    except ValueError as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold cyan]AI Tutor - Contextual Retrieval Enrichment[/bold cyan]")
+    console.print(f"Target: [green]{norm_board.upper()} Class 10 {norm_subject}[/green]")
+    console.print("[dim]Note: This makes LLM calls to generate situating notes. Runs are cached on disk and resume safely.[/dim]\n")
+
+    summary = asyncio.run(
+        enrich_partition(
+            board=norm_board,
+            subject=norm_subject,
+            limit=limit,
+            force_mock=mock,
+            delay_seconds=delay,
+        )
+    )
+
+    console.print("[bold green][OK] Enrichment run finished![/bold green]")
+    console.print(f"Total Chunks in Partition: [bold]{summary['total_chunks']}[/bold]")
+    console.print(f"Previously Cached: [bold]{summary['already_cached']}[/bold]")
+    console.print(f"Newly Enriched: [bold]{summary['newly_enriched']}[/bold]")
+    console.print(f"Total Now Cached: [bold]{summary['total_cached']}[/bold]")
 
 
 if __name__ == "__main__":

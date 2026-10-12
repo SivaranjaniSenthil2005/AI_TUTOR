@@ -1,5 +1,5 @@
-# Example Gold Evaluation Set for AI Tutor RAG Evaluation
-# Place your real evaluation questions in data/eval/gold_set.yaml (gitignored).
+# Example Gold Evaluation Set for AI Tutor RAG Evaluation (Phase 11 Conversational Format)
+# Supports single-turn questions, multi-turn follow-ups with history, and honest refusal checks.
 
 items:
   - question: "Why do stars twinkle in the night sky?"
@@ -46,3 +46,37 @@ items:
     expected_chapter_title: "Outbreak of World War I and Its Aftermath"
     expected_pages: [1, 2, 3]
     notes: "Imperial rivalry and European alliances."
+
+  # Conversational follow-up examples (Phase 11)
+  - question: "Where does it happen?"
+    board: "cbse"
+    class_level: 10
+    subject: "science"
+    history:
+      - role: "student"
+        text: "What is photosynthesis?"
+      - role: "tutor"
+        text: "Photosynthesis is the process by which autotrophs take in carbon dioxide and water and convert them into carbohydrates in the presence of sunlight and chlorophyll."
+    expected_chapter_no: 5
+    expected_chapter_title: "Life Processes"
+    notes: "Follow-up pronoun resolution: where photosynthesis happens in chloroplast / leaf."
+
+  - question: "Give an everyday example of it."
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    history:
+      - role: "student"
+        text: "Explain inertia of motion."
+      - role: "tutor"
+        text: "Inertia of motion is the resistance of any physical object to any change in its velocity or state of motion."
+    expected_chapter_no: 1
+    expected_chapter_title: "Laws of Motion"
+    notes: "Follow-up resolution: example of inertia of motion."
+
+  - question: "What is the capital city of France?"
+    board: "cbse"
+    class_level: 10
+    subject: "science"
+    expected_refusal: true
+    notes: "Negative refusal check: not in Class 10 Science textbook."

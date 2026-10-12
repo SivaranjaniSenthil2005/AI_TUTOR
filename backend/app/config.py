@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     GUARDRAIL_MIN_RERANK_SCORE: float = -8.0
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 60
 
+    # Phase 11 Advanced RAG Settings
+    REWRITE_MODE: str = "auto"  # "auto" | "always" | "off"
+    FAST_MODE: bool = False     # If True, bypasses rewrite & expansion for low-latency
+    MAX_LLM_CALLS_PER_REQUEST: int = 3
+    REWRITE_TIMEOUT_SECONDS: float = 5.0
+    EXPAND_TIMEOUT_SECONDS: float = 5.0
+    MULTI_QUERY_VARIANTS: int = 2
+    SOFT_CHAPTER_THRESHOLD: float = -4.0
+    ENRICHMENT_DIR: str = str(BASE_DIR / "data" / "processed" / "enrichment")
+
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 

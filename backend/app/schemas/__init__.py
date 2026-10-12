@@ -88,7 +88,41 @@ class RetrieveResponse(BaseModel):
     timings_ms: Dict[str, float]
 
 
-# Phase 10 LLM Schemas
+class Turn(BaseModel):
+    """A single turn in conversational history."""
+
+    role: str = Field(..., description="'student' or 'tutor'")
+    text: str = Field(..., max_length=1000, description="Turn content")
+
+
+class LearnerProfile(BaseModel):
+    """Personalized accessibility settings for neurodiverse learners."""
+
+    reading_level: str = Field("standard", description="'easy' or 'standard'")
+    max_sentences: int = Field(5, ge=2, le=10, description="Target maximum sentence count (2-10)")
+    avoid_figurative_language: bool = Field(
+        False,
+        description="Enforces purely literal language; forbids idioms, metaphors, or figures of speech",
+    )
+    repeat_key_term: bool = Field(
+        False,
+        description="Explicitly restates key scientific/historical terms instead of vague pronouns",
+    )
+
+    @field_validator("reading_level")
+    @classmethod
+    def validate_reading_level(cls, v: str) -> str:
+        clean = (v or "").strip().lower()
+        if clean not in {"easy", "standard"}:
+            raise ValueError("reading_level must be either 'easy' or 'standard'")
+        return clean
+
+    @field_validator("max_sentences")
+    @classmethod
+    def validate_max_sentences(cls, v: int) -> int:
+        if v < 2 or v > 10:
+            raise ValueError("max_sentences must be an integer between 2 and 10")
+        return v
 
 
 class AskRequest(BaseModel):
@@ -98,8 +132,13 @@ class AskRequest(BaseModel):
     board: str = Field(..., description="Educational board ('tn' or 'cbse')")
     subject: str = Field(..., description="Subject ('science' or 'social_science')")
     chapter_no: Optional[int] = Field(None, ge=1, le=100, description="Optional chapter number filter")
+    active_chapter_no: Optional[int] = Field(None, ge=1, le=100, description="Active chapter context from student session")
     class_level: Optional[int] = Field(10, description="Class standard (Class 10 only)")
-    mode: Optional[str] = Field("hybrid_rerank", description="Retrieval mode")
+    mode: Optional[str] = Field("simple", description="Learning mode ('simple', 'step_by_step', 'example', 'exam') or retrieval mode")
+    learning_mode: Optional[str] = Field(None, description="Explicit learning mode ('simple', 'step_by_step', 'example', 'exam')")
+    retrieval_mode: Optional[str] = Field("hybrid_rerank", description="Retrieval mode")
+    learner_profile: Optional[LearnerProfile] = None
+    history: Optional[List[Turn]] = Field(default_factory=list, description="Recent conversation turns (stateless, max 6 turns)")
 
     @field_validator("board")
     @classmethod
@@ -135,6 +174,8 @@ class SourceCitation(BaseModel):
 class AnswerLatency(BaseModel):
     """Per-stage latency measurements in milliseconds."""
 
+    rewriting: float = 0.0
+    expansion: float = 0.0
     retrieval: float = 0.0
     generation: float = 0.0
     total: float = 0.0
@@ -151,6 +192,13 @@ class AnswerResult(BaseModel):
     latency_ms: AnswerLatency
     usage: Dict[str, Any] = Field(default_factory=dict)
     mock: bool = False
+    rewritten_query: Optional[str] = None
+    rewrite_used: bool = False
+    mode: str = "simple"
+    learning_mode: str = "simple"
+    topic_hint: Optional[str] = None
+    speech_text: str = ""
+    suggested_questions: List[str] = Field(default_factory=list)
     retrieval_debug: Optional[Dict[str, Any]] = None
 
 

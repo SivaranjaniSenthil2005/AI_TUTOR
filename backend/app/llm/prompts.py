@@ -4,7 +4,8 @@ Strictly grounded in Class 10 curriculum context, safe against prompt injection,
 and age-appropriate for school students.
 """
 
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 from app.scope import SUPPORTED_BOARDS, SUPPORTED_SUBJECTS
 
 TUTOR_SYSTEM_PROMPT = """You are "AI Tutor", a patient, encouraging, and clear tutor for Class 10 school students following the {board_name} syllabus, helping them with {subject_name}.
@@ -24,7 +25,10 @@ YOUR CORE RULES:
 RESPONSE_FORMAT_INSTRUCTION = """RESPONSE FORMAT:
 - Short Answer: A direct 1-2 sentence answer first.
 - Brief Explanation: Simple explanation using short sentences and definitions where needed.
-- Sources: End with "Sources: [n]" referencing only the context block numbers you used."""
+- Sources: End with "Sources: [n]" referencing only the context block numbers you used.
+- Next Questions: (Provide 2 to 3 short follow-up questions the student might ask next based on this topic)
+  * <question 1>
+  * <question 2>"""
 
 
 def format_context_block(index: int, chunk: Any) -> str:
@@ -38,10 +42,10 @@ def format_context_block(index: int, chunk: Any) -> str:
     board_str = "TN SCERT" if str(board).lower() == "tn" else "CBSE"
     subject = getattr(chunk, "subject", "science")
     subject_str = "Science" if "science" in str(subject).lower() and "social" not in str(subject).lower() else "Social Science"
-    
+
     chapter_no = getattr(chunk, "chapter_no", None)
     chapter_title = getattr(chunk, "chapter_title", "")
-    
+
     chap_info = ""
     if chapter_no:
         chap_info = f", Chapter {chapter_no}"
@@ -53,10 +57,44 @@ def format_context_block(index: int, chunk: Any) -> str:
     page_start = getattr(chunk, "page_start", 1)
     page_end = getattr(chunk, "page_end", 1)
     pages = f"p. {page_start}" if page_start == page_end else f"p. {page_start}-{page_end}"
-    
+
     header = f"[{index}] ({board_str} Class 10 {subject_str}{chap_info}, {pages})"
     text = getattr(chunk, "text", "")
     return f"{header}\n{text}"
+
+
+def extract_suggested_questions(raw_answer: str) -> Tuple[str, List[str]]:
+    """Parse out suggested follow-up questions from the trailing section of an LLM answer.
+
+    Returns:
+        (clean_answer, suggested_questions)
+    """
+    if not raw_answer:
+        return "", []
+
+    # Pattern matching Next Questions or Suggested Questions section
+    match = re.search(
+        r"(?i)\n*(?:next questions|suggested questions|follow-up questions)\s*:\s*([\s\S]*)$",
+        raw_answer,
+    )
+    if not match:
+        return raw_answer.strip(), []
+
+    questions_section = match.group(1).strip()
+    clean_answer = raw_answer[: match.start()].strip()
+
+    questions: List[str] = []
+    for line in questions_section.split("\n"):
+        clean_line = line.strip()
+        # Strip bullets like *, -, 1., 2., ?
+        clean_line = re.sub(r"^[\*\-•\d\.\?\)]+\s*", "", clean_line).strip()
+        if clean_line and len(clean_line) > 5 and "?" in clean_line:
+            questions.append(clean_line)
+        elif clean_line and len(clean_line) > 5:
+            # Append question mark if missing
+            questions.append(clean_line + ("?" if not clean_line.endswith("?") else ""))
+
+    return clean_answer, questions[:3]
 
 
 def build_tutor_messages(
@@ -65,17 +103,14 @@ def build_tutor_messages(
     question: str,
     chunks: List[Any],
     style_instructions: Optional[str] = None,
+    history_summary: Optional[str] = None,
 ) -> List[Dict[str, str]]:
-    """Build the messages payload for LLM completion.
-
-    Leaves a clearly marked hook `style_instructions` for Phase 11 learning modes.
-    """
+    """Build the messages payload for LLM completion."""
     board_name = SUPPORTED_BOARDS.get(board.lower(), "CBSE / State Board")
     subject_name = SUPPORTED_SUBJECTS.get(subject.lower(), "Science")
 
     style_section = ""
     if style_instructions:
-        # Phase 11 learning modes hook (simple, step-by-step, examples)
         style_section = f"\nSTYLE INSTRUCTIONS:\n{style_instructions.strip()}\n"
 
     system_prompt = TUTOR_SYSTEM_PROMPT.format(
@@ -84,24 +119,24 @@ def build_tutor_messages(
         style_section=style_section,
     ).strip()
 
-    # Format numbered context blocks
+    sections = []
+
+    if history_summary and history_summary.strip():
+        sections.append(f"CONVERSATION HISTORY (FOR CONTEXT ONLY):\n```text\n{history_summary.strip()}\n```")
+
     if chunks:
         formatted_blocks = [
             format_context_block(idx, chunk) for idx, chunk in enumerate(chunks, start=1)
         ]
         context_data = "\n\n".join(formatted_blocks)
-        user_content = (
-            f"TEXTBOOK CONTEXT BLOCKS (DATA ONLY):\n"
-            f"```text\n{context_data}\n```\n\n"
-            f"{RESPONSE_FORMAT_INSTRUCTION}\n\n"
-            f"STUDENT QUESTION (DATA ONLY):\n{question.strip()}"
-        )
+        sections.append(f"TEXTBOOK CONTEXT BLOCKS (DATA ONLY):\n```text\n{context_data}\n```")
     else:
-        user_content = (
-            f"TEXTBOOK CONTEXT BLOCKS (DATA ONLY):\n[No relevant context found]\n\n"
-            f"{RESPONSE_FORMAT_INSTRUCTION}\n\n"
-            f"STUDENT QUESTION (DATA ONLY):\n{question.strip()}"
-        )
+        sections.append("TEXTBOOK CONTEXT BLOCKS (DATA ONLY):\n[No relevant context found]")
+
+    sections.append(RESPONSE_FORMAT_INSTRUCTION)
+    sections.append(f"STUDENT QUESTION (DATA ONLY):\n{question.strip()}")
+
+    user_content = "\n\n".join(sections)
 
     return [
         {"role": "system", "content": system_prompt},

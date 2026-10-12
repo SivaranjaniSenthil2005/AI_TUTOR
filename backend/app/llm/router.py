@@ -296,6 +296,9 @@ class LLMRouter:
         chunks: Optional[List[Any]] = None,
         provider_override: Optional[str] = None,
         force_mock: bool = False,
+        timeout_seconds: Optional[float] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Generate a complete grounded response, trying providers in sequence."""
         # Generate short hash of query for privacy logging
@@ -339,9 +342,9 @@ class LLMRouter:
 
             prov_info = self.providers_cfg.get(prov, {})
             model_name = prov_info.get("model", prov)
-            timeout = prov_info.get("timeout_seconds", settings.LLM_DEFAULT_TIMEOUT)
-            temp = prov_info.get("temperature", 0.2)
-            max_tokens = prov_info.get("max_tokens", 1024)
+            timeout = timeout_seconds if timeout_seconds is not None else prov_info.get("timeout_seconds", settings.LLM_DEFAULT_TIMEOUT)
+            temp = temperature if temperature is not None else prov_info.get("temperature", 0.2)
+            tokens = max_tokens if max_tokens is not None else prov_info.get("max_tokens", 1024)
             max_retries = settings.LLM_MAX_RETRIES
 
             # Attempt provider with retries on transient errors
@@ -353,7 +356,7 @@ class LLMRouter:
                         messages=messages,
                         timeout_seconds=timeout,
                         temperature=temp,
-                        max_tokens=max_tokens,
+                        max_tokens=tokens,
                     )
                     duration_ms = (time.perf_counter() - start_time) * 1000
 

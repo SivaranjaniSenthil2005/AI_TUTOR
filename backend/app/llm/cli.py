@@ -1,15 +1,15 @@
-"""Command-line interface for AI Tutor LLM generation and failover testing."""
+"""Command-line interface for AI Tutor LLM generation, learning modes, and failover testing."""
 
 import asyncio
+import json
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 # Ensure backend directory is in sys.path
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -26,6 +26,8 @@ if sys.platform == "win32":
         pass
 
 from app.scope import validate_scope
+from app.schemas import LearnerProfile
+from app.services.memory import Turn
 from app.services.answer import answer_question, stream_answer_question
 from app.llm.router import LLMRouter, get_llm_router
 
@@ -39,24 +41,35 @@ def ask(
     board: str = typer.Option("cbse", "--board", "-b", help="Board: 'cbse' or 'tn'"),
     subject: str = typer.Option("science", "--subject", "-s", help="Subject: 'science' or 'social_science'"),
     chapter: Optional[int] = typer.Option(None, "--chapter", "-c", help="Optional chapter number filter"),
+    mode: str = typer.Option("simple", "--mode", "-m", help="Learning mode: simple, step_by_step, example, exam"),
+    reading_level: str = typer.Option("standard", "--reading-level", help="Learner profile reading level: easy, standard"),
+    avoid_figurative: bool = typer.Option(False, "--avoid-figurative", help="Enforce strictly literal language for neurodiverse learners"),
     stream: bool = typer.Option(False, "--stream", help="Stream response tokens via terminal"),
     provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Provider override (gemini, groq, mistral, openai, mock)"),
-    mock: bool = typer.Option(False, "--mock", "-m", help="Force deterministic MockProvider"),
+    mock: bool = typer.Option(False, "--mock", help="Force deterministic MockProvider"),
     k: int = typer.Option(5, "--k", help="Top chunks to retrieve"),
+    speech: bool = typer.Option(True, "--speech", help="Display text-to-speech audio transcript"),
 ):
-    """Ask a question grounded in Class 10 textbook curriculum."""
+    """Ask a question grounded in Class 10 textbook curriculum with Phase 11 Advanced RAG."""
     try:
         norm_board, norm_class, norm_subject = validate_scope(board=board, class_level=10, subject=subject)
     except ValueError as e:
         console.print(f"[bold red]{e}[/bold red]")
         raise typer.Exit(code=1)
 
+    profile = LearnerProfile(
+        reading_level=reading_level,
+        avoid_figurative_language=avoid_figurative,
+    )
+
     console.print(Panel(
         f"[bold yellow]Question:[/bold yellow] {question}\n"
         f"[bold cyan]Scope:[/bold cyan] {norm_board.upper()} Class 10 {norm_subject.replace('_', ' ').title()}" +
         (f" (Chapter {chapter})" if chapter else "") +
-        f" | [bold magenta]Provider:[/bold magenta] {provider or ('mock' if mock else 'auto-fallback')}",
-        title="[bold green]AI Tutor - Grounded Answer Generation[/bold green]",
+        f"\n[bold magenta]Mode:[/bold magenta] {mode} | [bold blue]Reading Level:[/bold blue] {reading_level}" +
+        (f" | [bold green]Literal Language:[/bold green] ON" if avoid_figurative else "") +
+        f" | [bold dim]Provider:[/bold dim] {provider or ('mock' if mock else 'auto-fallback')}",
+        title="[bold green]AI Tutor - Grounded Answer Generation (Phase 11)[/bold green]",
         border_style="green",
     ))
 
@@ -64,21 +77,23 @@ def ask(
         async def _run_stream():
             console.print("\n[bold cyan]Answer:[/bold cyan] ", end="")
             final_data = {}
-            candidate_sources = []
 
             async for event in stream_answer_question(
                 question=question,
                 board=norm_board,
                 subject=norm_subject,
                 chapter_no=chapter,
+                mode=mode,
+                learner_profile=profile,
                 top_k=k,
                 provider_override=provider,
                 force_mock=mock,
             ):
                 ev_type = event.get("event")
                 ev_data = event.get("data", {})
-                if ev_type == "sources":
-                    candidate_sources = ev_data.get("sources", [])
+                if ev_type == "meta":
+                    if ev_data.get("rewritten_query"):
+                        console.print(f"\n[bold yellow]Rewritten Query:[/bold yellow] {ev_data.get('rewritten_query')}")
                 elif ev_type == "token":
                     console.print(ev_data.get("delta", ""), end="", highlight=False)
                 elif ev_type == "done":
@@ -98,16 +113,34 @@ def ask(
                     board=norm_board,
                     subject=norm_subject,
                     chapter_no=chapter,
+                    mode=mode,
+                    learner_profile=profile,
                     top_k=k,
                     provider_override=provider,
                     force_mock=mock,
                 )
 
-            console.print(Panel(res.answer, title="[bold cyan]Tutor Answer[/bold cyan]", border_style="cyan"))
+            if res.rewritten_query:
+                console.print(f"[bold yellow]Rewritten Query:[/bold yellow] {res.rewritten_query}")
 
-            # Print sources
+            console.print(Panel(res.answer, title=f"[bold cyan]Tutor Answer ({res.mode.upper()})[/bold cyan]", border_style="cyan"))
+
+            # Spoken TTS Text
+            if speech and res.speech_text:
+                console.print(Panel(res.speech_text, title="[bold green]Voice Output (Spoken Audio)[/bold green]", border_style="green"))
+
+            # Follow-up Suggestions
+            if res.suggested_questions:
+                sug_table = Table(title="Suggested Follow-Up Questions (Gaze Target Buttons)")
+                sug_table.add_column("#", justify="center", style="bold yellow")
+                sug_table.add_column("Suggested Question", style="magenta")
+                for s_idx, q_sug in enumerate(res.suggested_questions, start=1):
+                    sug_table.add_row(str(s_idx), q_sug)
+                console.print(sug_table)
+
+            # Sources
             if res.sources:
-                table = Table(title="Used Textbook Sources & Citations")
+                table = Table(title="Textbook Citations")
                 table.add_column("Marker", style="bold yellow", justify="center")
                 table.add_column("Book & Chapter", style="green")
                 table.add_column("Pages", style="cyan", justify="center")
@@ -119,23 +152,21 @@ def ask(
                     table.add_row(f"[{s.citation_index}]", f"{s.book_title} ({chap_info})", pages, s.chunk_id)
 
                 console.print(table)
-            else:
-                console.print("[italic yellow]No textbook citations found in generated answer.[/italic yellow]")
 
-            # Print timings & audit metadata
-            meta_table = Table(title="Execution Metrics")
-            meta_table.add_column("Metric", style="bold")
+            # Timings & Audit
+            meta_table = Table(title="Execution Metrics per Stage")
+            meta_table.add_column("Stage / Metric", style="bold")
             meta_table.add_column("Value", style="cyan")
 
             meta_table.add_row("Provider", res.provider)
             meta_table.add_row("Model", res.model)
-            meta_table.add_row("Retrieval Latency", f"{res.latency_ms.retrieval:.1f} ms")
-            meta_table.add_row("Generation Latency", f"{res.latency_ms.generation:.1f} ms")
-            meta_table.add_row("Total Latency", f"{res.latency_ms.total:.1f} ms")
+            meta_table.add_row("Rewriting Stage", f"{res.latency_ms.rewriting:.1f} ms")
+            meta_table.add_row("Expansion Stage", f"{res.latency_ms.expansion:.1f} ms")
+            meta_table.add_row("Retrieval Stage", f"{res.latency_ms.retrieval:.1f} ms")
+            meta_table.add_row("Generation Stage", f"{res.latency_ms.generation:.1f} ms")
+            meta_table.add_row("Total Pipeline Latency", f"{res.latency_ms.total:.1f} ms")
+            meta_table.add_row("Topic Hint", str(res.topic_hint or "N/A"))
             meta_table.add_row("Grounded", "[green]True[/green]" if res.grounded else "[red]False[/red]")
-            meta_table.add_row("Mock Mode", str(res.mock))
-            if res.usage:
-                meta_table.add_row("Tokens (Prompt / Comp / Total)", f"{res.usage.get('prompt_tokens', 0)} / {res.usage.get('completion_tokens', 0)} / {res.usage.get('total_tokens', 0)}")
 
             console.print(meta_table)
 
@@ -156,73 +187,58 @@ def _print_metadata(data: dict):
             table.add_row(f"[{s.get('citation_index', '')}]", f"{s.get('book_title', '')} ({chap})", pages)
         console.print(table)
 
+    if data.get("speech_text"):
+        console.print(Panel(data.get("speech_text"), title="[bold green]Voice Output (Spoken Audio)[/bold green]", border_style="green"))
+
+    lat = data.get("latency_ms", {})
     meta_table = Table(title="Stream Execution Metrics")
-    meta_table.add_column("Metric", style="bold")
-    meta_table.add_column("Value", style="cyan")
-    meta_table.add_row("Provider", data.get("provider", "unknown"))
-    meta_table.add_row("Model", data.get("model", "unknown"))
-    meta_table.add_row("Grounded", "[green]True[/green]" if data.get("grounded") else "[red]False[/red]")
-    meta_table.add_row("Mock", str(data.get("mock", False)))
-    latencies = data.get("latency_ms", {})
-    if isinstance(latencies, dict):
-        meta_table.add_row("Total Latency", f"{latencies.get('total', 0):.1f} ms")
+    meta_table.add_column("Stage", style="bold")
+    meta_table.add_column("Latency (ms)", style="cyan")
+    for st, val in lat.items():
+        meta_table.add_row(st.title(), f"{val:.1f} ms")
     console.print(meta_table)
 
 
 @app.command()
 def failover_test():
-    """Simulates primary providers failing and validates fallback chain operation."""
-    console.print(Panel(
-        "[bold cyan]AI Tutor - LLM Multi-Provider Failover Test[/bold cyan]\n"
-        "This test injects simulated errors into primary providers to verify that the router\n"
-        "gracefully cascades down the fallback chain and answers without disruption.",
-        title="[bold yellow]Failover Simulation[/bold yellow]",
-        border_style="yellow",
-    ))
-
+    """Runs a simulated multi-provider failover test demonstrating circuit breaking."""
+    console.print("[bold cyan]AI Tutor - LLM Failover & Circuit Breaker Simulation[/bold cyan]\n")
     router = get_llm_router()
 
-    # Step 1: Simulate Gemini failing with RateLimitError (429)
-    # Step 2: Simulate Groq failing with Timeout (25s)
-    # Step 3: Allow Mistral/Mock to answer
-    console.print("\n[bold]Scenario 1: Primary provider failure (Gemini: 429 RateLimit)[/bold]")
-    router._fault_injections = {"gemini": "rate_limit"}
-
-    messages = [
-        {"role": "system", "content": "You are AI Tutor."},
-        {"role": "user", "content": "TEXTBOOK CONTEXT BLOCKS:\n[1] (CBSE Class 10 Science) Light travels in straight lines.\n\nWhy does light bend in water?"},
-    ]
+    console.print("[bold yellow]1. Simulating Provider Failures...[/bold yellow]")
+    router.inject_fault("gemini", "rate_limit")
+    router.inject_fault("groq", "auth")
 
     async def _test():
-        res1 = await router.generate(messages, force_mock=False)
-        console.print(f"-> Attempt 1 Result: Provider used = [bold green]{res1['provider']}[/bold green] (Model: {res1['model']})")
-        cb_gemini = router.circuit_breakers.get("gemini")
-        if cb_gemini:
-            console.print(f"   Gemini Circuit Breaker: failures={cb_gemini.failure_count}, state={cb_gemini.state}")
+        messages = [
+            {"role": "system", "content": "You are AI Tutor."},
+            {"role": "user", "content": "What is photosynthesis?"},
+        ]
+        res = await router.generate(messages)
+        console.print(f"[bold green][OK] Generation Succeeded via Failover![/bold green]")
+        console.print(f"Active Provider Used: [bold cyan]{res['provider']}[/bold cyan] ({res['model']})")
+        console.print(f"Latency: [bold]{res['latency_ms']:.1f} ms[/bold]\n")
 
-        console.print("\n[bold]Scenario 2: Multi-provider cascading failure (Gemini: 401 Auth, Groq: Timeout)[/bold]")
-        router._fault_injections = {"gemini": "auth", "groq": "timeout"}
-        res2 = await router.generate(messages, force_mock=False)
-        console.print(f"-> Attempt 2 Result: Provider used = [bold green]{res2['provider']}[/bold green] (Model: {res2['model']})")
+        status = router.get_status()
+        console.print("[bold blue]Provider Status & Circuit Breakers:[/bold blue]")
+        table = Table()
+        table.add_column("Provider", style="cyan")
+        table.add_column("State", style="bold")
+        table.add_column("Failures", justify="center")
+        table.add_column("Cooldown Remaining", justify="right")
 
-        console.print("\n[bold]Scenario 3: All real providers failing -> Clean Fallback to MockProvider[/bold]")
-        router._fault_injections = {
-            "gemini": "auth",
-            "groq": "timeout",
-            "mistral": "rate_limit",
-            "openai": "rate_limit",
-        }
-        res3 = await router.generate(messages, force_mock=False)
-        console.print(f"-> Attempt 3 Result: Provider used = [bold green]{res3['provider']}[/bold green] (Mock: {res3['mock']})")
-
-        # Cleanup fault injections
-        router._fault_injections.clear()
-        for cb in router.circuit_breakers.values():
-            cb.reset()
-
-        console.print("\n[bold green][PASS] All failover scenarios completed successfully![/bold green]")
+        for p, cb in status["circuit_breakers"].items():
+            state_color = "green" if cb["state"] == "CLOSED" else "red"
+            table.add_row(
+                p,
+                f"[{state_color}]{cb['state']}[/{state_color}]",
+                str(cb["failure_count"]),
+                f"{cb['cooldown_remaining_sec']}s",
+            )
+        console.print(table)
 
     asyncio.run(_test())
+    router.clear_faults()
 
 
 if __name__ == "__main__":

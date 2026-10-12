@@ -200,7 +200,12 @@ async def ask_question_endpoint(req: AskRequest, request: Request) -> AnswerResu
             board=req.board,
             subject=req.subject,
             chapter_no=req.chapter_no,
-            mode=req.mode or "hybrid_rerank",
+            active_chapter_no=req.active_chapter_no,
+            mode=req.mode or "simple",
+            learning_mode=req.learning_mode,
+            retrieval_mode=req.retrieval_mode or "hybrid_rerank",
+            learner_profile=req.learner_profile,
+            history=req.history,
         )
         return result
     except HTTPException:
@@ -223,9 +228,10 @@ async def ask_question_stream(req: AskRequest, request: Request):
     """Streams student answer via Server-Sent Events (SSE).
 
     Event types:
-    - 'sources': Candidate retrieved citations (sent first)
+    - 'meta': Query rewriting and topic hint metadata (sent first)
+    - 'sources': Candidate retrieved citations
     - 'token': Incremental text delta
-    - 'done': Final completion payload with metadata & verified citations
+    - 'done': Final completion payload with metadata, speech_text, & suggested_questions
     - 'error': Friendly error event
     """
     client_ip = request.client.host if request.client else "127.0.0.1"
@@ -242,7 +248,12 @@ async def ask_question_stream(req: AskRequest, request: Request):
                 board=req.board,
                 subject=req.subject,
                 chapter_no=req.chapter_no,
-                mode=req.mode or "hybrid_rerank",
+                active_chapter_no=req.active_chapter_no,
+                mode=req.mode or "simple",
+                learning_mode=req.learning_mode,
+                retrieval_mode=req.retrieval_mode or "hybrid_rerank",
+                learner_profile=req.learner_profile,
+                history=req.history,
             ):
                 if await request.is_disconnected():
                     logger.info("Client disconnected from SSE stream.")

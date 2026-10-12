@@ -700,6 +700,160 @@ python -m app.llm.cli failover-test
 
 ---
 
+## Advanced RAG Architecture (Phase 11)
+
+AI Tutor features an advanced, privacy-first conversational RAG architecture engineered specifically for Class 10 Tamil Nadu State Board and CBSE/NCERT curriculum.
+
+```
+[ Student Message + Ephemeral History ]
+                   │
+                   ▼
+       [ Heuristic Skip Check ] ──(standalone)──┐
+                   │ (needs resolution)         │
+                   ▼                            │
+         [ Query Rewriting ]                    │
+    (Pronouns, Voice STT typos,                 │
+    Class 10 abbreviation expansion)            │
+                   │                            │
+                   └────────────┬───────────────┘
+                                │
+                                ▼
+                   [ Standalone Search Query ]
+                                │
+                                ▼
+                   [ Adaptive Query Routing ]
+            (Soft chapter preference with auto-widening)
+                                │
+                                ▼
+                  [ Multi-Query Expansion ]
+             (Up to 2 textbook syllabus phrasings)
+                                │
+                                ▼
+         ┌──────────────────────┴──────────────────────┐
+         │                                             │
+         ▼                                             ▼
+ [ Variant 0 Retrieval ]                       [ Variant 1 Retrieval ]
+ (Dense Vector + BM25)                         (Dense Vector + BM25)
+         │                                             │
+         └──────────────────────┬──────────────────────┘
+                                │
+                                ▼
+                [ Reciprocal Rank Fusion (RRF) ]
+                                │
+                                ▼
+                 [ Block Type Policy & Boosts ]
+                                │
+                                ▼
+              [ Cross-Encoder Final Reranker ]
+                                │
+                                ▼
+                 [ Grounding Check / Shortcut ]
+                                │
+                                ▼
+              [ Prompt Synthesis & Injection Defense ]
+          (System + Learning Mode + Learner Profile
+          + Context Blocks + Conversation Summary)
+                                │
+                                ▼
+               [ Multi-Provider LLM Router ]
+                                │
+                                ▼
+             [ Citation Parsing & Grounding Check ]
+                                │
+                                ▼
+            [ Follow-up Suggestions Extraction (2-3) ]
+                                │
+                                ▼
+           [ Deterministic Spoken Text Synthesizer ]
+                                │
+                                ▼
+[ AnswerResult: answer, speech_text, suggestions, topic_hint, timings ]
+```
+
+### 1. Learning Modes & Neurodiverse Adaptation
+
+AI Tutor provides 4 curriculum learning modes designed to accommodate diverse cognitive and reading styles without ever compromising factual accuracy:
+
+| Mode | Format & Structure | Ideal For |
+|------|-------------------|-----------|
+| `simple` (default) | Very short sentences (under 5 sentences), elementary vocabulary, hard terms defined in brackets `[like this]`. | Quick comprehension, reducing cognitive overload |
+| `step_by_step` | Sequenced numbered steps (`1.`, `2.`, `3.`), strictly one concept per step. | Scientific processes, chemical reactions, historical sequences |
+| `example` | Direct definition followed by ONE relatable everyday Indian example labeled `Example:`. | Relational thinkers who connect concepts to concrete life |
+| `exam` | Direct definition followed by 3–5 high-yield bullet points using exact textbook terminology. | Board exam preparation (3-mark and 5-mark answers) |
+
+#### Example: How "What is a chemical reaction?" is answered across modes:
+
+- **`simple` mode:**
+  > "A chemical reaction is when substances change to form new substances [like rust forming on iron]. The starting substances are called reactants. The new substances formed are called products. Bonds between atoms break and new bonds form. [1]"
+- **`step_by_step` mode:**
+  > "1. Reactant substances come into contact with each other. [1]  
+  > 2. Chemical bonds between atoms in the reactants break. [1]  
+  > 3. Atoms rearrange themselves into new combinations. [1]  
+  > 4. New chemical bonds form to create the final products. [1]"
+- **`example` mode:**
+  > "A chemical reaction is a process where one or more substances are transformed into entirely new substances with different properties. [1]  
+  > **Example:** In an everyday Indian kitchen, when warm milk is mixed with a spoon of curd, bacteria ferment the milk into curd. This change is irreversible and forms a new substance."
+- **`exam` mode:**
+  > "**Definition:** A chemical reaction is a process in which chemical bonds between atoms are broken and new bonds are formed, transforming reactants into products with distinct chemical properties. [1]  
+  > **Key Points:**  
+  > - **Characteristics:** Change in state, change in temperature, evolution of gas, or formation of a precipitate. [1]  
+  > - **Conservation of Mass:** Total mass of elements present in the products equals total mass of reactants. [1]  
+  > - **Representation:** Written as a balanced equation: $\\text{Reactants} \\rightarrow \\text{Products}$. [1]"
+
+### 2. Personalized `learner_profile`
+
+Clients can pass a `learner_profile` object on top of any learning mode:
+- `reading_level`: `"easy"` (shorter, elementary words) or `"standard"`.
+- `max_sentences`: Integer between 2 and 10 capping explanation length.
+- `avoid_figurative_language`: `true` forces purely literal explanations, completely eliminating idioms, metaphors, or figures of speech that cause confusion for autistic or literal learners.
+- `repeat_key_term`: `true` restates core nouns explicitly instead of using vague pronouns like "it" or "they".
+
+### 3. Stateless Conversation Memory (Privacy-First)
+
+To strictly safeguard children's privacy and neurodivergent health data:
+- **Zero Persistent Storage:** The server does **not** store any conversations, student questions, or transcripts. No database, no JSON files, and no question text in log files.
+- **Client-Managed History:** Conversation memory is passed statelessly per request via `history: [{role: "student"|"tutor", text: "..."}]`.
+- **Enforced Caps:** The server accepts at most the last 6 turns and caps each turn at 600 characters, automatically discarding older or oversized entries.
+
+### 4. Query Rewriting & Multi-Query Expansion
+
+- **Standalone Rewriter (`rewrite.py`):** Resolves pronouns ("give an example of it", "why doesn't it conduct?"), cleans up voice-to-text recognition slips, and expands Class 10 abbreviations (`AC` $\rightarrow$ alternating current, `GDP` $\rightarrow$ gross domestic product).
+- **Skip Heuristic:** Questions that are already clear standalone queries ($\ge 5$ words, no pronoun triggers, empty history) bypass the LLM rewrite to preserve free-tier quota and minimize latency.
+- **Adaptive Soft Chapter Routing (`routing.py`):** Targets the active chapter first; if relevance falls below `SOFT_CHAPTER_THRESHOLD` (-4.0), it automatically widens to the whole subject so students never get trapped in the wrong chapter.
+- **Configuration Controls:**
+  - `REWRITE_MODE="auto"` (default), `"always"`, or `"off"`.
+  - `FAST_MODE=1`: Bypasses rewrite and multi-query expansion for low-spec hardware or ultra-fast latency.
+  - `MAX_LLM_CALLS_PER_REQUEST=3`: Strict budget per request.
+
+### 5. Voice-Friendly Output (`speech_text`) & Gaze Follow-ups
+
+- **Deterministic Audio Translation (`speech.py`):** Strips citation bracket markers `[1]`, converts steps (`1.` $\rightarrow$ `"Step one."`), replaces mathematical symbols (`°C` $\rightarrow$ `"degrees Celsius"`, `→` $\rightarrow$ `"gives"`), and converts chemical formulas (`NaCl` $\rightarrow$ `"sodium chloride"`, `CO2` $\rightarrow$ `"C O 2"`).
+- **Suggested Follow-up Questions:** Parses 2–3 relevant next questions from the same LLM call, providing immediate gaze-selectable targets for hands-free navigation.
+
+### 6. Optional Offline Chunk Enrichment
+
+For enhanced retrieval recall, passages can be enriched offline with 1–2 sentence situating notes:
+```bash
+# Enrich chunks using LLM router (cached on disk, resumable)
+python -m app.rag.cli enrich --board cbse --subject science --limit 20 --mock
+
+# Build index incorporating enrichment notes
+python -m app.rag.cli index --all --use-enrichment
+```
+
+### 7. Conversational RAG Evaluation
+
+Evaluate retrieval and answer grounding on multi-turn conversations:
+```bash
+# Compare No Rewrite vs Rewrite Only vs Rewrite + Multi-Query
+python -m app.rag.eval.run_eval --compare-rewrite --mock
+
+# Run automated grounding, citation, and speech quality checks
+python -m app.rag.eval.run_eval --answer-checks --mock
+```
+
+---
+
 ## Privacy & Neurodiversity-First Design
 
 - **Camera & Video Privacy:** All gaze and facial landmark processing runs entirely **on-device inside the browser** using client-side WebAssembly/WebGPU. No raw video feed, frames, or biometric recordings are ever uploaded, transmitted, or stored on any server.

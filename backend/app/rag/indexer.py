@@ -95,8 +95,11 @@ class CorpusIndexer:
         class_level: Optional[int] = None,
         subject: Optional[str] = None,
         rebuild: bool = False,
+        use_enrichment: bool = False,
     ) -> Dict[str, Any]:
         """Indexes all or filtered partitions into ChromaDB and BM25."""
+        from app.rag.enrichment import load_enrichment_cache
+
         partitions = scan_processed_chunks(
             processed_dir=self.processed_dir,
             board_filter=board,
@@ -112,8 +115,10 @@ class CorpusIndexer:
                 continue
 
             logger.info(
-                f"Indexing partition: Board={b.upper()}, Class={c}, Subject={s} ({len(chunks)} chunks)..."
+                f"Indexing partition: Board={b.upper()}, Class={c}, Subject={s} ({len(chunks)} chunks, enrichment={use_enrichment})..."
             )
+
+            enrichment_cache = load_enrichment_cache(b, s) if use_enrichment else {}
 
             # 1. Build and save BM25 Partition
             self.keyword_index.build_and_save_partition(
@@ -124,8 +129,15 @@ class CorpusIndexer:
             )
 
             # 2. Vector Store Ingestion
-            # Generate embeddings for context_header + "\n" + text
-            embed_texts = [c.get_embed_text() for c in chunks]
+            # Generate embeddings for context_note (optional) + context_header + text
+            embed_texts = []
+            for item in chunks:
+                note = enrichment_cache.get(item.chunk_id, "")
+                if note:
+                    embed_texts.append(f"{note}\n{item.context_header}\n{item.text}".strip())
+                else:
+                    embed_texts.append(item.get_embed_text())
+
             embeddings = self.embedding_model.embed_documents(embed_texts)
 
             # Upsert into Chroma (idempotent by chunk_id)
