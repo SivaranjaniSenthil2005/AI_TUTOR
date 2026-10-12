@@ -43,6 +43,8 @@ export interface ThreadMessage {
   originalQuestion?: string;
 }
 
+export type ChatMessage = ThreadMessage;
+
 export interface AskViewProps {
   board: string;
   subject: string;
@@ -327,7 +329,6 @@ export function AskView({
 
         if (autoSpeak && finalSpeechText) {
           setActiveSpeakingMsgId(tutorMsgId);
-          setActiveSpeechSentenceIdx(0);
           tts.speak(finalSpeechText);
         }
       } catch (err: unknown) {
@@ -407,7 +408,6 @@ export function AskView({
   const handleSpeakTutorMessage = (msgId: string, speechText: string) => {
     stt.stop();
     setActiveSpeakingMsgId(msgId);
-    setActiveSpeechSentenceIdx(0);
     setSession((prev) => askMachineTransition(prev, { type: "START_SPEAKING" }));
     tts.speak(speechText);
   };
