@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/landmarks.test.ts lib/gaze/gaze.test.ts lib/calibration/calibration.test.ts lib/gazeui/hitTest.test.ts lib/gazeui/dwell.test.ts lib/gazeui/gazeui.test.ts lib/voice/voice.test.ts lib/voice/askConfirmation.test.ts"
+    "test": "tsx --test lib/landmarks.test.ts lib/gaze/gaze.test.ts lib/calibration/calibration.test.ts lib/gazeui/hitTest.test.ts lib/gazeui/dwell.test.ts lib/gazeui/gazeui.test.ts lib/voice/voice.test.ts lib/voice/askConfirmation.test.ts lib/api/sseParser.test.ts lib/session/askMachine.test.ts lib/voice/sentenceAligner.test.ts lib/session/memory.test.ts lib/settings/learnerSettings.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
@@ -16,6 +17,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

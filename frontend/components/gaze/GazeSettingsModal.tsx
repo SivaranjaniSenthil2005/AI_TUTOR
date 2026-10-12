@@ -5,6 +5,7 @@ import { useGazeContext } from "@/lib/gazeui/GazeContext";
 import { GazeButton } from "./GazeButton";
 import { globalSoundEffects } from "@/lib/gazeui/sound";
 import type { VoiceSettings, VoiceOption } from "@/lib/voice";
+import type { AppLearnerSettings } from "@/lib/settings/learnerSettings";
 
 export interface GazeSettingsModalProps {
   isOpen: boolean;
@@ -16,6 +17,9 @@ export interface GazeSettingsModalProps {
   onUpdateVoiceSettings?: (settings: Partial<VoiceSettings>) => void;
   voices?: VoiceOption[];
   onTestVoice?: () => void;
+  learnerSettings?: AppLearnerSettings;
+  onUpdateLearnerSettings?: (settings: Partial<AppLearnerSettings>) => void;
+  onClearSavedChat?: () => void;
 }
 
 export function GazeSettingsModal({
@@ -28,6 +32,9 @@ export function GazeSettingsModal({
   onUpdateVoiceSettings,
   voices = [],
   onTestVoice,
+  learnerSettings,
+  onUpdateLearnerSettings,
+  onClearSavedChat,
 }: GazeSettingsModalProps) {
   const { settings, updateSettings, resetSettings } = useGazeContext();
 
@@ -52,6 +59,13 @@ export function GazeSettingsModal({
     { rate: 1.1, label: "1.1x Brisk" },
   ];
 
+  const modeOptions: { id: AppLearnerSettings["mode"]; label: string }[] = [
+    { id: "simple", label: "Simple" },
+    { id: "step_by_step", label: "Step by Step" },
+    { id: "example", label: "Example" },
+    { id: "exam", label: "Exam Style" },
+  ];
+
   return (
     <div
       role="dialog"
@@ -71,10 +85,10 @@ export function GazeSettingsModal({
                 id="settings-modal-title"
                 className="text-2xl sm:text-3xl font-black text-white tracking-tight"
               >
-                Gaze & Voice Accessibility Settings
+                AI Tutor Settings & Accessibility
               </h2>
               <p className="text-sm font-semibold text-amber-300">
-                Personalize dwell time, speech speed, voice output, and visual comfort
+                Personalize learning style, reading pace, dwell time, and data persistence
               </p>
             </div>
           </div>
@@ -93,7 +107,167 @@ export function GazeSettingsModal({
 
         {/* Settings Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Section 1: Dwell Duration */}
+          {/* Section 1: Learner Profile & Explanation Modes */}
+          {learnerSettings && onUpdateLearnerSettings && (
+            <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3 md:col-span-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span>🎓</span> Learner Profile & Answer Style
+                </h3>
+                <span className="text-xs font-black text-cyan-300 bg-slate-900 px-3 py-1 rounded-full border border-slate-700">
+                  Mode: {learnerSettings.mode.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Default Learning Mode */}
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-400 uppercase">Default Mode:</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {modeOptions.map((m) => (
+                    <GazeButton
+                      key={m.id}
+                      id={`learner-mode-${m.id}`}
+                      onClick={() => onUpdateLearnerSettings({ mode: m.id })}
+                      label={m.label}
+                      variant={learnerSettings.mode === m.id ? "active" : "card"}
+                      size="compact"
+                      className="!min-h-[50px] text-xs justify-center"
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Reading Level & Length Controls */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase">Reading Level:</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <GazeButton
+                      id="reading-level-easy"
+                      onClick={() => onUpdateLearnerSettings({ reading_level: "easy" })}
+                      label="Easy / Simple"
+                      variant={learnerSettings.reading_level === "easy" ? "active" : "card"}
+                      size="compact"
+                      className="!min-h-[48px] text-xs justify-center"
+                    />
+                    <GazeButton
+                      id="reading-level-std"
+                      onClick={() => onUpdateLearnerSettings({ reading_level: "standard" })}
+                      label="Standard 10th"
+                      variant={learnerSettings.reading_level === "standard" ? "active" : "card"}
+                      size="compact"
+                      className="!min-h-[48px] text-xs justify-center"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase">
+                    Answer Sentences ({learnerSettings.max_sentences}):
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <GazeButton
+                      id="sentences-fewer-btn"
+                      onClick={() =>
+                        onUpdateLearnerSettings({
+                          max_sentences: Math.max(2, learnerSettings.max_sentences - 1),
+                        })
+                      }
+                      label="Fewer (-1)"
+                      icon="➖"
+                      variant="card"
+                      size="compact"
+                      className="!min-h-[48px] text-xs justify-center"
+                    />
+                    <GazeButton
+                      id="sentences-more-btn"
+                      onClick={() =>
+                        onUpdateLearnerSettings({
+                          max_sentences: Math.min(10, learnerSettings.max_sentences + 1),
+                        })
+                      }
+                      label="More (+1)"
+                      icon="➕"
+                      variant="card"
+                      size="compact"
+                      className="!min-h-[48px] text-xs justify-center"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Neurodiverse Language Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <GazeButton
+                  id="toggle-figurative-btn"
+                  onClick={() =>
+                    onUpdateLearnerSettings({
+                      avoid_figurative_language: !learnerSettings.avoid_figurative_language,
+                    })
+                  }
+                  label={
+                    learnerSettings.avoid_figurative_language
+                      ? "Literal Language: ON ✓"
+                      : "Literal Language: OFF"
+                  }
+                  variant={learnerSettings.avoid_figurative_language ? "accent" : "outline"}
+                  size="compact"
+                  className="!min-h-[48px] text-xs justify-center"
+                />
+                <GazeButton
+                  id="toggle-repeat-terms-btn"
+                  onClick={() =>
+                    onUpdateLearnerSettings({
+                      repeat_key_term: !learnerSettings.repeat_key_term,
+                    })
+                  }
+                  label={
+                    learnerSettings.repeat_key_term
+                      ? "Reinforce Key Terms: ON ✓"
+                      : "Reinforce Key Terms: OFF"
+                  }
+                  variant={learnerSettings.repeat_key_term ? "accent" : "outline"}
+                  size="compact"
+                  className="!min-h-[48px] text-xs justify-center"
+                />
+              </div>
+
+              {/* Chat Memory Persistence Toggle */}
+              <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-300">Chat History Persistence</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Default is off (cleared on reload) for student privacy.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <GazeButton
+                    id="toggle-remember-chat-btn"
+                    onClick={() =>
+                      onUpdateLearnerSettings({ rememberChat: !learnerSettings.rememberChat })
+                    }
+                    label={learnerSettings.rememberChat ? "Remember Chat: ON 💾" : "Remember Chat: OFF 🧹"}
+                    variant={learnerSettings.rememberChat ? "accent" : "outline"}
+                    size="compact"
+                    className="!min-h-[46px] text-xs font-bold"
+                  />
+                  {onClearSavedChat && (
+                    <GazeButton
+                      id="delete-saved-chat-btn"
+                      onClick={onClearSavedChat}
+                      label="Delete Saved Chat"
+                      icon="🗑️"
+                      variant="danger"
+                      size="compact"
+                      className="!min-h-[46px] text-xs font-bold"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section 2: Dwell Duration */}
           <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -121,7 +295,7 @@ export function GazeSettingsModal({
             </div>
           </div>
 
-          {/* Section 2: Hit Area Padding */}
+          {/* Section 3: Hit Area Padding */}
           <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -149,7 +323,7 @@ export function GazeSettingsModal({
             </div>
           </div>
 
-          {/* Section 3: Voice Input & Output Settings */}
+          {/* Section 4: Voice Input & Output Settings */}
           {voiceSettings && onUpdateVoiceSettings && (
             <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3 md:col-span-2">
               <div className="flex items-center justify-between">
@@ -243,7 +417,7 @@ export function GazeSettingsModal({
             </div>
           )}
 
-          {/* Section 4: Audio & Gaze Dot */}
+          {/* Section 5: Audio & Gaze Dot */}
           <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <span>🔊</span> UI Sound & Cursor Feedback
@@ -275,7 +449,7 @@ export function GazeSettingsModal({
             </div>
           </div>
 
-          {/* Section 5: Visual Accessibility */}
+          {/* Section 6: Visual Accessibility */}
           <div className="bg-[#131f38] p-5 rounded-2xl border-2 border-slate-700 flex flex-col gap-3">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <span>♿</span> Visual Comfort & Theme

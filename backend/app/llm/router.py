@@ -167,6 +167,8 @@ class LLMRouter:
         for prov in self.provider_chain:
             if self.get_api_key(prov):
                 enabled.append(prov)
+        if not enabled:
+            enabled.append("mock")
         return enabled
 
     def get_status(self) -> Dict[str, Any]:

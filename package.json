@@ -1,0 +1,26 @@
+{
+  "name": "ai-tutor",
+  "version": "1.0.0",
+  "description": "Accessible AI Tutor for neurodiverse Class 10 school students",
+  "private": true,
+  "scripts": {
+    "dev:all": "powershell -ExecutionPolicy Bypass -File ./scripts/dev_all.ps1",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "cd backend && python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+    "check:env": "python scripts/check_env.py",
+    "test:frontend": "npm test --prefix frontend",
+    "test:backend": "cd backend && pytest -v",
+    "test": "npm run test:frontend && npm run test:backend"
+  },
+  "keywords": [
+    "ai-tutor",
+    "accessibility",
+    "gaze-tracking",
+    "neurodiversity",
+    "rag",
+    "cbse",
+    "tn-stateboard"
+  ],
+  "author": "Google DeepMind / AI Tutor Team",
+  "license": "MIT"
+}

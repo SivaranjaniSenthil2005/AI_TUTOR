@@ -854,13 +854,115 @@ python -m app.rag.eval.run_eval --answer-checks --mock
 
 ---
 
-## Privacy & Neurodiversity-First Design
+## Phase 12: Integrated Gaze, Voice & RAG Application
 
-- **Camera & Video Privacy:** All gaze and facial landmark processing runs entirely **on-device inside the browser** using client-side WebAssembly/WebGPU. No raw video feed, frames, or biometric recordings are ever uploaded, transmitted, or stored on any server.
-- **Accessible UI:** High-contrast color palettes, large typography, distraction-free layouts, visual focus cues, and dual gaze/voice activation are prioritized for accessible student experiences.
+Phase 12 integrates everything into one unified, production-ready web application: hands-free eye gaze dwell UI with camera calibration, Web Speech STT/TTS with confirmation and read-along highlighting, and streaming RAG backend Q&A across Tamil Nadu and CBSE Standard 10 Science & Social Science textbooks.
+
+### Architecture
+
+```
+[ Webcam ] ──> [ MediaPipe Iris & Face Mesh ] ──> [ Calibration & GazeMapper ] ──> [ GazeButton Dwell & Scroll UI ]
+                                                                                             │
+[ Microphone ] ──> [ Web Speech STT ] ──> [ Voice Confirmation ("Did I hear right?") ] ─────┤
+                                                                                             │
+                                                                                             ▼
+                                                                                   POST /api/ask/stream (SSE)
+                                                                                             │
+                     ┌───────────────────────────────────────────────────────────────────────┘
+                     ▼
+           [ Standalone Query Rewriter ] (Pronoun resolution & abbreviations)
+                     │
+                     ▼
+           [ Hybrid Retrieval ] (ChromaDB Dense + BM25 Sparse + RRF + Cross-Encoder Reranker)
+                     │
+                     ▼
+           [ Multi-Provider LLM Router ] (Ollama -> Gemini -> Groq -> Mistral -> OpenAI -> MockProvider)
+                     │
+                     ▼
+           SSE Stream Events:
+             1. `meta`: rewritten query, active topic hint, learning mode
+             2. `sources`: book title, chapter, section, pages, citation index [n]
+             3. `token`*: incremental token stream for instant UI feedback
+             4. `done`: grounded flag, model, speech_text, suggested_questions
+                     │
+                     ▼
+           [ High-Contrast Student Workspace ]
+             • Token streaming with polite `aria-live` region
+             • Non-destructive [n] citation chips linking to expandable textbook sources
+             • Re-explain Mode Buttons: Simple, Step by Step, Example, Exam Style
+             • Suggested Follow-up GazeButtons
+             • Sentence-level read-along highlighting via `alignSentences(answer, speech_text)`
+             • Web Speech Audio TTS narration
+```
+
+### Quickstart
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/SivaranjaniSenthil2005/AI_TUTOR.git
+   cd ai_tutor
+   ```
+
+2. **Verify & Check Environment:**
+   ```bash
+   python scripts/check_env.py
+   ```
+
+3. **Install Dependencies:**
+   ```bash
+   # Backend
+   cd backend
+   python -m venv .venv
+   .\.venv\Scripts\activate   # Linux/macOS: source .venv/bin/activate
+   pip install -r requirements.txt
+
+   # Frontend
+   cd ../frontend
+   npm install
+   ```
+
+4. **Launch Backend and Frontend Together:**
+   ```bash
+   # From root:
+   npm run dev:all
+   ```
+   Open `http://localhost:3000` in Google Chrome or Microsoft Edge.
+
+### Demo Script (2-Minute Presentation Walkthrough)
+
+1. **First-Run Onboarding (0:00 - 0:30):**
+   - Launch app at `http://localhost:3000`.
+   - See the accessible Onboarding greeting with privacy reassurance: *"Your camera video stays 100% inside this browser."*
+   - Click or dwell on **Enable Eye Control** (or **Skip Eye Control** if without webcam).
+   - Select **Tamil Nadu State Board** or **CBSE (NCERT)** and **Science** or **Social Science** (Class 10).
+   - Click **Start Learning with AI Tutor**.
+
+2. **Asking a Question by Voice (0:30 - 1:00):**
+   - Dwell or click on the large **Ask with Voice** button.
+   - Say: *"What are Newton's laws of motion?"*
+   - Notice the confirmation card: *"Did I hear you right?"* -> Click **Yes, Ask Tutor**.
+   - Watch the answer stream in token-by-token alongside citation chips `[1]`, `[2]`.
+
+3. **Exploring Citations & Read Aloud (1:00 - 1:30):**
+   - Click **View Sources** to expand the textbook source (Book, Chapter, Page range).
+   - Hear the tutor narrate using `speech_text` with synchronized sentence-level highlighting.
+   - Click **Pause Audio** / **Resume Audio** or **Stop Audio**.
+
+4. **Adaptive Learning Modes & Follow-ups (1:30 - 2:00):**
+   - Look at the mode buttons under the answer: click **Step by Step** or **Example**.
+   - Notice the tutor re-explains the exact same question in the selected pedagogical style.
+   - Click one of the **Suggested Follow-Up Questions** to continue exploring seamlessly!
+
+### Accessibility and Privacy Standards
+
+- **WCAG 2.1 AA Compliant:** High contrast modes, minimum 72px gaze target heights, generous >=24px spacing, visible focus rings, and full keyboard operability.
+- **Client-Side Eye Tracking:** MediaPipe facial landmark detection runs purely client-side; no video frames ever leave the device.
+- **Stateless Privacy:** By default, nothing is persisted to disk or cloud databases. Conversations are held strictly in ephemeral React state unless the student turns on *"Remember my chat on this device"*.
+- **Development Gaze Simulator:** When `NEXT_PUBLIC_DEV_TOOLS=1`, press the **Sim Gaze** toggle in the bottom right corner to drive eye gaze coordinates with the mouse pointer for rapid testing without a webcam.
 
 ---
 
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more details. Copyright (c) 2026 Sivaranjani.
+

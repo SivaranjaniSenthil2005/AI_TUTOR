@@ -7,17 +7,24 @@ import { GazeButton } from "@/components/gaze/GazeButton";
 import { GazeScrollArea } from "@/components/gaze/GazeScrollArea";
 import { GazePauseBar } from "@/components/gaze/GazePauseBar";
 import { GazeSettingsModal } from "@/components/gaze/GazeSettingsModal";
-import { LearnChooser } from "@/components/LearnChooser";
-import { AskView, type ChatMessage } from "@/components/voice/AskView";
-import { ListenView } from "@/components/voice/ListenView";
+import { PrivacyPanel } from "@/components/gaze/PrivacyPanel";
+import { GazeSimulator } from "@/components/gaze/GazeSimulator";
+import { OnboardingFlow, OnboardingResult } from "@/components/onboarding/OnboardingFlow";
+import { AskView } from "@/components/voice/AskView";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
-import { getTutorReply } from "@/lib/tutor/mock";
+import {
+  loadLearnerSettings,
+  saveLearnerSettings,
+  clearSavedChatHistory,
+  AppLearnerSettings,
+} from "@/lib/settings/learnerSettings";
+import { getScope, getLLMStatus, isMockMode, getApiBaseUrl } from "@/lib/api/client";
 import type { GazePoint } from "@/hooks/useGazePoint";
 import type { GazeMapper } from "@/lib/calibration/mapper";
+import type { ScopeResponse, LLMStatusResponse } from "@/lib/api/types";
 
 type BackendStatus = "checking" | "connected" | "disconnected";
-type TabType = "home" | "learn" | "ask" | "listen";
 
 const DEFAULT_GAZE_POINT: GazePoint = {
   x: 0.5,
@@ -29,55 +36,72 @@ const DEFAULT_GAZE_POINT: GazePoint = {
   valid: false,
 };
 
+const emptySubscribe = () => () => {};
+
 export default function Home() {
+  const mounted = React.useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
-  const [activeTab, setActiveTab] = useState<TabType>("home");
   const [lastChecked, setLastChecked] = useState<string>("");
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState<boolean>(false);
   const [isCalibrationOpen, setIsCalibrationOpen] = useState<boolean>(false);
   const [mapper, setMapper] = useState<GazeMapper | null>(null);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
-  // Chat and Voice State
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [isThinking, setIsThinking] = useState<boolean>(false);
-  const [activeSpeakingId, setActiveSpeakingId] = useState<string | null>(null);
+  // Curriculum Scope & Selection
+  const [scope, setScope] = useState<ScopeResponse | null>(null);
+  const [llmStatus, setLlmStatus] = useState<LLMStatusResponse | null>(null);
+  const [selectedBoard, setSelectedBoard] = useState<string>("tn");
+  const [selectedSubject, setSelectedSubject] = useState<string>("science");
+
+  // Onboarding state
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const completed = localStorage.getItem("ai_tutor_onboarding_completed");
+        const b = localStorage.getItem("ai_tutor_selected_board");
+        const s = localStorage.getItem("ai_tutor_selected_subject");
+        if (b) setSelectedBoard(b);
+        if (s) setSelectedSubject(s);
+        return completed === "true";
+      } catch {}
+    }
+    return false;
+  });
+
+  // Learner Profile Settings
+  const [learnerSettings, setLearnerSettings] = useState<AppLearnerSettings>(() =>
+    loadLearnerSettings()
+  );
 
   const sharedGazePointRef = useRef<GazePoint>(DEFAULT_GAZE_POINT);
   const webcamHandleRef = useRef<WebcamViewHandle | null>(null);
 
   // Voice output hook (TTS)
-  const tts = useSpeechSynthesis({
-    onStart: () => {},
-    onEnd: () => {
-      setActiveSpeakingId(null);
-    },
-  });
+  const tts = useSpeechSynthesis();
 
   // Voice input hook (STT) with mutual exclusion (stops TTS before listening)
   const stt = useSpeechRecognition({
     onStopTts: () => {
       tts.stop();
-      setActiveSpeakingId(null);
     },
   });
 
-  // Check backend health
+  // Check backend health and scope
   const checkBackendHealth = useCallback(async () => {
     setBackendStatus("checking");
     try {
-      const res = await fetch("http://127.0.0.1:8000/health", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
+      const scopeData = await getScope();
+      setScope(scopeData);
 
-      if (res.ok) {
-        const data = await res.json();
-        setBackendStatus(data.status === "ok" ? "connected" : "disconnected");
-      } else {
-        setBackendStatus("disconnected");
-      }
+      const statusData = await getLLMStatus().catch(() => null);
+      if (statusData) setLlmStatus(statusData);
+
+      setBackendStatus("connected");
     } catch {
       setBackendStatus("disconnected");
     } finally {
@@ -86,131 +110,48 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchStatus = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/health", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-        });
-        if (!isMounted) return;
-        if (res.ok) {
-          const data = await res.json();
-          setBackendStatus(data.status === "ok" ? "connected" : "disconnected");
-        } else {
-          setBackendStatus("disconnected");
-        }
-      } catch {
-        if (isMounted) setBackendStatus("disconnected");
-      } finally {
-        if (isMounted) setLastChecked(new Date().toLocaleTimeString());
+    let active = true;
+    const poll = async () => {
+      if (active) {
+        await checkBackendHealth();
       }
     };
-
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 15000);
+    poll();
+    const interval = setInterval(poll, 30000);
     return () => {
-      isMounted = false;
+      active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [checkBackendHealth]);
 
-  // Handle Asking a Question (Voice or Typed)
-  const handleAskQuestion = useCallback(
-    async (questionText: string, wasVoice: boolean) => {
-      if (!questionText.trim()) return;
+  const handleUpdateLearnerSettings = (partial: Partial<AppLearnerSettings>) => {
+    setLearnerSettings((prev) => {
+      const updated = { ...prev, ...partial };
+      saveLearnerSettings(updated);
+      return updated;
+    });
+  };
 
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        role: "user",
-        text: questionText.trim(),
-        timestamp: Date.now(),
-        wasVoice,
-      };
+  const handleOnboardingComplete = (res: OnboardingResult) => {
+    setSelectedBoard(res.board);
+    setSelectedSubject(res.subject);
+    setIsOnboardingCompleted(true);
+  };
 
-      setMessages((prev) => [...prev, userMsg]);
-      setIsThinking(true);
+  const handleChangeBoardSubject = () => {
+    setIsOnboardingCompleted(false);
+  };
 
-      try {
-        // Fetch simulated / mock tutor reply
-        const replyText = await getTutorReply(questionText, {
-          board: "Tamil Nadu SCERT",
-          className: "Std 10",
-          subject: "Science",
-        });
+  const handleClearSavedChat = () => {
+    clearSavedChatHistory();
+  };
 
-        const tutorMsg: ChatMessage = {
-          id: `tutor-${Date.now()}`,
-          role: "tutor",
-          text: replyText,
-          timestamp: Date.now(),
-        };
-
-        setMessages((prev) => [...prev, tutorMsg]);
-        setIsThinking(false);
-
-        // Auto-read aloud if enabled or asked via voice
-        if (tts.settings.autoRead || wasVoice) {
-          setActiveSpeakingId(tutorMsg.id);
-          tts.speak(replyText);
-        }
-      } catch {
-        setIsThinking(false);
-      }
-    },
-    [tts]
-  );
-
-  const handleSpeakMessage = useCallback(
-    (id: string, text: string) => {
-      stt.stop(); // Mutual exclusion
-      setActiveSpeakingId(id);
-      tts.speak(text);
-    },
-    [stt, tts]
-  );
-
-  const handleStopSpeaking = useCallback(() => {
-    tts.stop();
-    setActiveSpeakingId(null);
-  }, [tts]);
-
-  // Latest tutor message for the Listen screen
-  const latestTutorMessage = messages
-    .filter((m) => m.role === "tutor")
-    .slice(-1)[0] || null;
-
-  const navItems: { id: TabType; label: string; icon: string; desc: string; tag: string }[] = [
-    {
-      id: "home",
-      label: "Home",
-      icon: "🏠",
-      desc: "Welcome dashboard & gaze center",
-      tag: "Main Hub",
-    },
-    {
-      id: "learn",
-      label: "Learn",
-      icon: "📖",
-      desc: "TN SCERT & CBSE textbooks (Std 6–12)",
-      tag: "Curriculum",
-    },
-    {
-      id: "ask",
-      label: "Ask",
-      icon: "💬",
-      desc: "Voice STT curriculum Q&A",
-      tag: "Voice Ask",
-    },
-    {
-      id: "listen",
-      label: "Listen",
-      icon: "🔊",
-      desc: "Voice TTS & read-along highlighting",
-      tag: "TTS Audio",
-    },
-  ];
+  // Calibration grade string
+  const calibrationGrade = mapper
+    ? mapper.getSampleCount() >= 9
+      ? "Good (A)"
+      : "Standard (B)"
+    : "Not calibrated";
 
   return (
     <GazeProvider gazePointRef={sharedGazePointRef} isCameraActive={isCameraActive}>
@@ -224,11 +165,21 @@ export default function Home() {
                 AI
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                  AI Tutor
-                </h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                    AI Tutor
+                  </h1>
+                  {isMockMode() && (
+                    <span
+                      id="demo-mode-badge"
+                      className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-600 text-white border border-purple-400"
+                    >
+                      Demo Mode
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs sm:text-sm font-semibold text-amber-300">
-                  Accessible Eye-Gaze & Voice Learning for Neurodiverse Students
+                  Accessible Eye-Gaze & Voice Learning • Class 10
                 </p>
               </div>
             </div>
@@ -242,10 +193,10 @@ export default function Home() {
                 isCalibrated={!!mapper}
               />
 
-              {/* Backend Status Badge */}
-              <div className="hidden md:flex items-center gap-2.5 bg-[#131f38] px-3.5 py-2 rounded-xl border border-slate-700 text-xs font-bold">
+              {/* Status Badges */}
+              <div className="hidden lg:flex items-center gap-2 bg-[#131f38] px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-bold">
                 <span
-                  className={`w-3 h-3 rounded-full ${
+                  className={`w-2.5 h-2.5 rounded-full ${
                     backendStatus === "connected"
                       ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
                       : backendStatus === "checking"
@@ -265,7 +216,7 @@ export default function Home() {
                         : "text-rose-400"
                     }
                   >
-                    {backendStatus === "connected" ? "OK" : backendStatus === "checking" ? "..." : "Offline"}
+                    {backendStatus === "connected" ? "Connected" : backendStatus === "checking" ? "Checking" : "Offline"}
                   </span>
                 </span>
                 <button
@@ -281,39 +232,22 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Calibration Prompt Banner if not calibrated */}
-        {!mapper && isCameraActive && (
-          <div className="max-w-7xl mx-auto w-full px-6 pt-4">
-            <div className="bg-gradient-to-r from-amber-500/20 via-[#131f38] to-amber-500/20 border-3 border-amber-400 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl" role="img" aria-label="Eyes Icon">
-                  👀
-                </span>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-white">
-                    Set Up Your Eyes First!
-                  </h2>
-                  <p className="text-sm font-semibold text-slate-300">
-                    A quick 9-point calibration maps your screen coordinates for effortless dwell navigation.
-                  </p>
-                </div>
-              </div>
-              <GazeButton
-                id="banner-calibrate-btn"
-                onClick={() => setIsCalibrationOpen(true)}
-                label="Start Calibration"
-                icon="🎯"
-                variant="accent"
-                size="compact"
-                className="!min-h-[56px] text-base"
-              />
-            </div>
+        {/* Backend Reconnect Notice when offline */}
+        {backendStatus === "disconnected" && !isMockMode() && (
+          <div className="bg-rose-950/90 border-b-2 border-rose-500 px-6 py-2.5 text-center text-xs sm:text-sm font-bold text-rose-200 flex items-center justify-center gap-3">
+            <span>⚠️ Backend server unreachable at {getApiBaseUrl()}. Please make sure the backend is running.</span>
+            <button
+              onClick={checkBackendHealth}
+              className="px-2.5 py-1 bg-rose-900 rounded-lg text-white hover:bg-rose-800 cursor-pointer text-xs"
+            >
+              Retry Connection
+            </button>
           </div>
         )}
 
-        {/* Main Two-Panel Layout */}
+        {/* Main Workspace Layout */}
         <main className="max-w-7xl mx-auto w-full px-6 py-6 flex-1 flex flex-col gap-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-[580px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-stretch min-h-[600px]">
             {/* Left Panel: Camera & Gaze Tracker */}
             <div className="lg:col-span-5 flex flex-col">
               <WebcamView
@@ -336,173 +270,100 @@ export default function Home() {
                   </span>
                   <div>
                     <h2 className="text-2xl font-black text-white tracking-tight">
-                      AI Tutor Workspace
+                      AI Tutor
                     </h2>
                     <p className="text-xs sm:text-sm font-semibold text-amber-300">
-                      Standard 6–12 Curriculum & Questions
+                      Class 10 Textbook Curriculum • {scope?.supported_boards[selectedBoard] || selectedBoard.toUpperCase()}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
-                  {activeTab.toUpperCase()} VIEW
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <GazeButton
+                    id="header-settings-btn"
+                    onClick={() => setIsSettingsOpen(true)}
+                    label="Settings"
+                    icon="⚙️"
+                    variant="card"
+                    size="compact"
+                    className="!min-h-[44px] text-xs font-bold"
+                  />
+                </div>
               </div>
 
               {/* Scrollable Workspace Content with Smooth Edge Gaze Scrolling */}
-              <GazeScrollArea className="flex-1 min-h-[420px]">
-                {/* Home View */}
-                {activeTab === "home" && (
-                  <div className="space-y-6">
-                    <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6 shadow-md">
-                      <h3 className="text-2xl font-black text-white mb-2 flex items-center gap-2">
-                        <span>👋</span> Hello! Ready to learn?
-                      </h3>
-                      <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
-                        AI Tutor is your accessible study assistant. Start the camera on the left, then speak your questions or look at any button to navigate hands-free!
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h4 className="text-base font-black text-amber-300 uppercase tracking-wider">
-                        Quick Actions (Look to Choose)
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <GazeButton
-                          id="quick-goto-ask-btn"
-                          onClick={() => setActiveTab("ask")}
-                          label="Ask with Voice"
-                          subtitle="Speak your question with confirmation verification"
-                          icon="🎙️"
-                          variant="accent"
-                          size="large"
-                        />
-                        <GazeButton
-                          id="quick-goto-learn-btn"
-                          onClick={() => setActiveTab("learn")}
-                          label="Textbook Explorer"
-                          subtitle="TN SCERT & CBSE Standards 6 to 12"
-                          icon="📖"
-                          variant="card"
-                          size="large"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="border-2 border-dashed border-slate-700 rounded-2xl p-6 bg-[#070b14]/60 text-center">
-                      <div className="w-14 h-14 rounded-2xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-3xl mx-auto mb-2">
-                        🎙️
-                      </div>
-                      <h4 className="text-lg font-black text-white mb-1">
-                        Multimodal Gaze + Voice Navigation
-                      </h4>
-                      <p className="text-sm text-slate-400 max-w-md mx-auto">
-                        • Dwell on the microphone button to ask a question by voice.<br />
-                        • Verify your speech in the confirmation card.<br />
-                        • Listen to answers with read-along text highlighting.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Learn View: Interactive Gaze-Operable Chooser */}
-                {activeTab === "learn" && <LearnChooser />}
-
-                {/* Ask View: Voice Input & Chat Thread */}
-                {activeTab === "ask" && (
-                  <AskView
-                    messages={messages}
-                    onAskQuestion={handleAskQuestion}
-                    isThinking={isThinking}
-                    stt={stt}
-                    tts={tts}
-                    activeSpeakingId={activeSpeakingId}
-                    onSpeakMessage={handleSpeakMessage}
-                    onStopSpeaking={handleStopSpeaking}
-                    tutorContext={{
-                      board: "Tamil Nadu SCERT",
-                      className: "Std 10",
-                      subject: "Science",
-                    }}
-                  />
-                )}
-
-                {/* Listen View: Audio Narration & Read-Along */}
-                {activeTab === "listen" && (
-                  <ListenView
-                    latestTutorMessage={latestTutorMessage}
-                    tts={tts}
-                    onGoToAsk={() => setActiveTab("ask")}
-                  />
-                )}
+              <GazeScrollArea className="flex-1 min-h-[460px] p-6">
+                <AskView
+                  board={selectedBoard}
+                  subject={selectedSubject}
+                  boardName={scope?.supported_boards[selectedBoard]}
+                  subjectName={scope?.supported_subjects[selectedSubject]}
+                  learnerSettings={learnerSettings}
+                  stt={stt}
+                  tts={tts}
+                  onChangeBoardSubject={handleChangeBoardSubject}
+                  onOpenPrivacy={() => setIsPrivacyOpen(true)}
+                />
               </GazeScrollArea>
 
-              {/* Status Bar */}
-              <div className="p-3 border-t-2 border-slate-800 bg-[#0d1527] flex items-center justify-between text-xs text-slate-400 font-semibold">
-                <span>
-                  {tts.speaking ? "🔊 Reading answer aloud..." : stt.state === "listening" ? "🎤 Listening to your voice..." : "Multimodal Gaze + Voice Active"}
-                </span>
-                <span>{lastChecked ? `Backend checked: ${lastChecked}` : ""}</span>
+              {/* Status and Safety UI Bar (Requirement 6) */}
+              <div className="p-3 border-t-2 border-slate-800 bg-[#0d1527] flex flex-wrap items-center justify-between text-xs text-slate-400 font-semibold gap-2">
+                <div className="flex items-center gap-3">
+                  <span>Backend: <strong className={backendStatus === "connected" ? "text-emerald-400" : "text-rose-400"}>{backendStatus}</strong></span>
+                  <span>•</span>
+                  <span>Camera: <strong className={isCameraActive ? "text-emerald-400" : "text-slate-500"}>{isCameraActive ? "ON" : "OFF"}</strong></span>
+                  <span>•</span>
+                  <span>Calibration: <strong className={mapper ? "text-emerald-400" : "text-amber-300"}>{calibrationGrade}</strong></span>
+                  <span>•</span>
+                  <span>Mic: <strong className={stt.state === "listening" ? "text-amber-400" : "text-slate-400"}>{mounted ? stt.state : "idle"}</strong></span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span>Mode: <strong className="text-cyan-300">{isMockMode() ? "Demo" : "Live"}</strong></span>
+                  {llmStatus && llmStatus.enabled_providers.length > 0 && (
+                    <span>Provider: <strong className="text-amber-300">{llmStatus.enabled_providers[0]}</strong></span>
+                  )}
+                  {lastChecked && <span>({lastChecked})</span>}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Bottom Gaze Navigation Bar (min 72px height, generous spacing >= 24px) */}
-          <section aria-label="Main Navigation Controls" className="mt-2">
-            <h2 className="text-base font-black text-slate-300 mb-3 uppercase tracking-wider flex items-center gap-2">
-              <span>🧭</span> Primary Navigation Controls
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <GazeButton
-                    key={item.id}
-                    id={`nav-${item.id}-btn`}
-                    onClick={() => setActiveTab(item.id)}
-                    label={item.label}
-                    subtitle={item.desc}
-                    icon={item.icon}
-                    tag={item.tag}
-                    variant={isActive ? "active" : "card"}
-                    size="large"
-                    priority={isActive ? 10 : 0}
-                    className="!min-h-[80px]"
-                  />
-                );
-              })}
-            </div>
-          </section>
         </main>
+
+        {/* First-Run Onboarding Modal */}
+        {mounted && !isOnboardingCompleted && (
+          <OnboardingFlow
+            onComplete={handleOnboardingComplete}
+            isCameraActive={isCameraActive}
+            onStartCamera={() => webcamHandleRef.current?.start()}
+            onOpenCalibration={() => setIsCalibrationOpen(true)}
+            isCalibrated={!!mapper}
+          />
+        )}
 
         {/* Settings Modal */}
         <GazeSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
-          onOpenCalibration={() => {
-            setIsSettingsOpen(false);
-            setIsCalibrationOpen(true);
-          }}
+          onOpenCalibration={() => setIsCalibrationOpen(true)}
           onSetCenter={() => webcamHandleRef.current?.startSetCenter()}
           isCameraActive={isCameraActive}
           voiceSettings={tts.settings}
           onUpdateVoiceSettings={tts.updateSettings}
           voices={tts.voices}
-          onTestVoice={() =>
-            tts.speak("Hello! I am AI Tutor, your accessible voice learning assistant.")
-          }
+          onTestVoice={() => tts.speak("Hello! I am your AI Tutor for Standard 10.")}
+          learnerSettings={learnerSettings}
+          onUpdateLearnerSettings={handleUpdateLearnerSettings}
+          onClearSavedChat={handleClearSavedChat}
         />
 
-        {/* Accessible Footer */}
-        <footer className="border-t-2 border-slate-800 bg-[#0d1527] px-6 py-5 text-center text-slate-400 text-sm">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            <p className="font-bold text-slate-300">
-              AI Tutor © 2026. Accessible Learning for Neurodiverse Students.
-            </p>
-            <p className="text-xs sm:text-sm text-slate-400">
-              Hands-Free Eye Gaze Dwell Navigation • Voice Input & Output • 100% Client-Side Privacy
-            </p>
-          </div>
-        </footer>
+        {/* Privacy Panel Modal */}
+        <PrivacyPanel
+          isOpen={isPrivacyOpen}
+          onClose={() => setIsPrivacyOpen(false)}
+        />
+
+        {/* Developer Gaze Simulator */}
+        <GazeSimulator gazePointRef={sharedGazePointRef} />
       </div>
     </GazeProvider>
   );
