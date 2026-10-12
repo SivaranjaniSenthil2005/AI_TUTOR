@@ -91,18 +91,22 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
       [onCalibrationOpenChange]
     );
 
-    // Stored GazeMapper model
-    const [mapper, setMapper] = useState<GazeMapper | null>(() => {
-      if (typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem(MAPPER_STORAGE_KEY);
-          if (stored) {
-            return GazeMapper.deserialize(stored);
-          }
-        } catch {}
-      }
-      return null;
-    });
+    const onMapperChangeRef = useRef(onMapperChange);
+    onMapperChangeRef.current = onMapperChange;
+
+    // Stored GazeMapper model (loaded on mount to prevent SSR hydration mismatch)
+    const [mapper, setMapper] = useState<GazeMapper | null>(null);
+
+    useEffect(() => {
+      try {
+        const stored = localStorage.getItem(MAPPER_STORAGE_KEY);
+        if (stored) {
+          const loaded = GazeMapper.deserialize(stored);
+          setMapper(loaded);
+          onMapperChangeRef.current?.(loaded);
+        }
+      } catch {}
+    }, []);
 
     const onLandmarksUpdateRef = useRef(onLandmarksUpdate);
     onLandmarksUpdateRef.current = onLandmarksUpdate;
@@ -264,6 +268,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
 
     const handleCalibrationComplete = useCallback((newMapper: GazeMapper) => {
       setMapper(newMapper);
+      onMapperChangeRef.current?.(newMapper);
       try {
         localStorage.setItem(MAPPER_STORAGE_KEY, newMapper.serialize());
       } catch {}
@@ -272,6 +277,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
 
     const handleClearCalibration = useCallback(() => {
       setMapper(null);
+      onMapperChangeRef.current?.(null);
       try {
         localStorage.removeItem(MAPPER_STORAGE_KEY);
       } catch {}

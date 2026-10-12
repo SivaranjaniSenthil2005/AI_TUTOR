@@ -148,8 +148,10 @@ export default function Home() {
 
   // Calibration grade string
   const calibrationGrade = mapper
-    ? mapper.getSampleCount() >= 9
+    ? mapper.quality?.grade === "good"
       ? "Good (A)"
+      : mapper.quality?.grade === "okay"
+      ? "Standard (B)"
       : "Standard (B)"
     : "Not calibrated";
 

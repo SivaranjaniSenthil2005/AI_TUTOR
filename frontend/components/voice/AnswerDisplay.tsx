@@ -70,7 +70,7 @@ export function AnswerDisplay({
       {mode && (
         <div className="inline-block">
           <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-cyan-300 border border-slate-700">
-            Mode: {mode.replace("_", " ")}
+            Mode: {mode.replace(/_/g, " ")}
           </span>
         </div>
       )}

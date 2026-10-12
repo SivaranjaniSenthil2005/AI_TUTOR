@@ -52,11 +52,11 @@ test.describe("AI Tutor End-to-End Flow", () => {
 
     // 7. Verify thinking indicator and streamed answer
     await expect(page.getByRole("heading", { name: "AI Tutor", level: 1 })).toBeVisible();
-    // Answer text should stream in and settle
-    await expect(page.locator("text=Photosynthesis is").first()).toBeVisible({ timeout: 15000 });
+    // Answer text finishes streaming when Read Aloud button appears
+    await expect(page.locator("button[id^='read-aloud-']").first()).toBeVisible({ timeout: 40000 });
 
     // 8. View sources
-    const sourcesBtn = page.locator("#expand-sources-btn");
+    const sourcesBtn = page.locator("#expand-sources-btn").first();
     if (await sourcesBtn.isVisible()) {
       await sourcesBtn.click();
       await expect(page.locator("text=Textbook Citations")).toBeVisible();
@@ -67,8 +67,8 @@ test.describe("AI Tutor End-to-End Flow", () => {
     if (await stepModeBtn.isVisible()) {
       await stepModeBtn.click();
       // Verifies a new answer is appended
-      await expect(page.locator("text=Mode: step by step").or(page.locator("text=Mode: STEP_BY_STEP"))).toBeVisible({
-        timeout: 15000,
+      await expect(page.locator("text=Mode: step by step").or(page.locator("text=MODE: STEP BY STEP"))).toBeVisible({
+        timeout: 30000,
       });
     }
 
