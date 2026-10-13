@@ -54,9 +54,11 @@ class MockProvider:
                         resolved = "photosynthesis process and equation"
                 else:
                     resolved = f"{raw_q} textbook explanation"
-            elif any(w in raw_q.lower() for w in ["ac", "dc", "gdp"]):
+            elif re.search(r"\b(ac|dc|gdp)\b", raw_q, re.IGNORECASE):
                 needs_rewrite = True
-                resolved = raw_q.replace("ac", "alternating current").replace("dc", "direct current").replace("gdp", "gross domestic product")
+                resolved = re.sub(r"\bac\b", "alternating current", raw_q, flags=re.IGNORECASE)
+                resolved = re.sub(r"\bdc\b", "direct current", resolved, flags=re.IGNORECASE)
+                resolved = re.sub(r"\bgdp\b", "gross domestic product", resolved, flags=re.IGNORECASE)
 
             sub_hint = "science" if any(w in resolved.lower() for w in ["bond", "reaction", "photo", "acid", "cell", "current", "force"]) else "social_science"
             return json.dumps({

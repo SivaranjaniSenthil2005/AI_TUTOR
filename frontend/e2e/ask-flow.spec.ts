@@ -2,9 +2,10 @@ import { test, expect } from "@playwright/test";
 
 test.describe("AI Tutor End-to-End Flow", () => {
   test.beforeEach(async ({ page }) => {
-    // Clear localStorage before each test so onboarding runs fresh
+    // Clear localStorage before each test so onboarding runs fresh, but enable mock mode
     await page.addInitScript(() => {
       window.localStorage.clear();
+      window.localStorage.setItem("ai_tutor_use_mock", "1");
     });
   });
 

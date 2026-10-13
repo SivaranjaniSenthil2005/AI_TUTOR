@@ -20,6 +20,13 @@ export function getApiBaseUrl(): string {
 }
 
 export function isMockMode(): boolean {
+  if (typeof window !== "undefined") {
+    try {
+      if (window.localStorage.getItem("ai_tutor_use_mock") === "1") {
+        return true;
+      }
+    } catch {}
+  }
   if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_USE_MOCK === "1") {
     return true;
   }

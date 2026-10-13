@@ -1,82 +1,147 @@
-# Example Gold Evaluation Set for AI Tutor RAG Evaluation (Phase 11 Conversational Format)
-# Supports single-turn questions, multi-turn follow-ups with history, and honest refusal checks.
+# Example Gold Evaluation Set for AI Tutor RAG Evaluation (Phase 13 Comprehensive Format)
+# Supports item types:
+# - direct: standard textbook query
+# - paraphrase: alternate wording or student vernacular
+# - follow_up: conversational follow-up with history
+# - noisy: typos or speech-to-text mishearings
+# - out_of_scope: non-curriculum query expected to be politely refused
 
 items:
-  - question: "Why do stars twinkle in the night sky?"
-    board: "cbse"
-    class_level: 10
-    subject: "science"
-    expected_chapter_no: 10
-    expected_chapter_title: "Human Eye and the Colourful World"
-    expected_pages: [178, 179]
-    notes: "Atmospheric refraction of starlight."
-
-  - question: "What is the function of the human cornea and lens?"
-    board: "cbse"
-    class_level: 10
-    subject: "science"
-    expected_chapter_no: 10
-    expected_chapter_title: "Human Eye and the Colourful World"
-    expected_pages: [176, 177]
-    notes: "Eye anatomy and focal adjustment."
-
-  - question: "Explain Newton's second law of motion with mathematical formula."
+  # 1. Direct Questions
+  - item_id: "q_001"
+    item_type: "direct"
+    question: "Explain Newton's second law of motion with its mathematical formula."
     board: "tn"
     class_level: 10
     subject: "science"
     expected_chapter_no: 1
     expected_chapter_title: "Laws of Motion"
     expected_pages: [4, 5]
-    notes: "Force equals mass times acceleration."
+    notes: "Direct concept question: Force equals rate of change of momentum (F=ma)."
 
-  - question: "What is the difference between power sharing in Belgium and Sri Lanka?"
+  - item_id: "q_002"
+    item_type: "direct"
+    question: "Why do stars twinkle in the night sky?"
     board: "cbse"
     class_level: 10
-    subject: "social_science"
-    expected_chapter_no: 1
-    expected_chapter_title: "Power Sharing"
-    expected_pages: [2, 3, 4]
-    notes: "Majoritarianism vs Accommodation."
+    subject: "science"
+    expected_chapter_no: 10
+    expected_chapter_title: "Human Eye and the Colourful World"
+    expected_pages: [178, 179]
+    notes: "Direct concept question: Atmospheric refraction of starlight."
 
-  - question: "What were the main causes of the First World War in 1914?"
+  - item_id: "q_003"
+    item_type: "direct"
+    question: "What were the main causes of the First World War in 1914?"
     board: "tn"
     class_level: 10
     subject: "social_science"
     expected_chapter_no: 1
     expected_chapter_title: "Outbreak of World War I and Its Aftermath"
     expected_pages: [1, 2, 3]
-    notes: "Imperial rivalry and European alliances."
+    notes: "Direct history question: Imperial rivalry, alliances, and Balkan crisis."
 
-  # Conversational follow-up examples (Phase 11)
-  - question: "Where does it happen?"
+  - item_id: "q_004"
+    item_type: "direct"
+    question: "What is the difference between power sharing in Belgium and Sri Lanka?"
     board: "cbse"
+    class_level: 10
+    subject: "social_science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Power Sharing"
+    expected_pages: [2, 3, 4]
+    notes: "Direct civics question: Accommodation vs majoritarianism."
+
+  # 2. Paraphrased Questions
+  - item_id: "q_005"
+    item_type: "paraphrase"
+    question: "Why does an object keep moving unless an external push stops it?"
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Laws of Motion"
+    expected_pages: [2, 3]
+    notes: "Paraphrase of Newton's first law and inertia of motion."
+
+  - item_id: "q_006"
+    item_type: "paraphrase"
+    question: "How does the eye adjust to see both nearby objects and distant objects?"
+    board: "cbse"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 10
+    expected_chapter_title: "Human Eye and the Colourful World"
+    expected_pages: [176, 177]
+    notes: "Paraphrase of accommodation power of the human eye."
+
+  # 3. Conversational Follow-Up Questions (with conversation history)
+  - item_id: "q_007"
+    item_type: "follow_up"
+    question: "Where does it happen in plant cells?"
+    board: "tn"
     class_level: 10
     subject: "science"
     history:
       - role: "student"
         text: "What is photosynthesis?"
       - role: "tutor"
-        text: "Photosynthesis is the process by which autotrophs take in carbon dioxide and water and convert them into carbohydrates in the presence of sunlight and chlorophyll."
-    expected_chapter_no: 5
-    expected_chapter_title: "Life Processes"
-    notes: "Follow-up pronoun resolution: where photosynthesis happens in chloroplast / leaf."
+        text: "Photosynthesis is the process where green plants synthesize food using carbon dioxide, water, and sunlight in the presence of chlorophyll."
+    expected_chapter_no: 12
+    expected_chapter_title: "Plant Anatomy and Plant Physiology"
+    notes: "Follow-up pronoun resolution: site of photosynthesis in chloroplasts."
 
-  - question: "Give an everyday example of it."
+  - item_id: "q_008"
+    item_type: "follow_up"
+    question: "Give an everyday example of it."
     board: "tn"
     class_level: 10
     subject: "science"
     history:
       - role: "student"
-        text: "Explain inertia of motion."
+        text: "Explain inertia of direction."
       - role: "tutor"
-        text: "Inertia of motion is the resistance of any physical object to any change in its velocity or state of motion."
+        text: "Inertia of direction is the resistance of an object to change its direction of motion."
     expected_chapter_no: 1
     expected_chapter_title: "Laws of Motion"
-    notes: "Follow-up resolution: example of inertia of motion."
+    notes: "Follow-up resolution: everyday example of inertia of direction (car taking a sharp turn)."
 
-  - question: "What is the capital city of France?"
+  # 4. Noisy / STT Typo Questions
+  - item_id: "q_009"
+    item_type: "noisy"
+    question: "wot is fotosinthesis and chloroplaste funcsion"
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 12
+    expected_chapter_title: "Plant Anatomy and Plant Physiology"
+    notes: "Noisy input: voice STT mishearing / spelling typos."
+
+  - item_id: "q_010"
+    item_type: "noisy"
+    question: "nutons secon law equasion of forse"
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    expected_chapter_no: 1
+    expected_chapter_title: "Laws of Motion"
+    notes: "Noisy input: phonetic STT errors for Newton's second law."
+
+  # 5. Out of Scope (Expected Refusal)
+  - item_id: "q_011"
+    item_type: "out_of_scope"
+    question: "What is the capital city of France?"
+    board: "tn"
+    class_level: 10
+    subject: "science"
+    expected_refusal: true
+    notes: "Negative refusal check: General geography not in Class 10 Science textbook."
+
+  - item_id: "q_012"
+    item_type: "out_of_scope"
+    question: "Solve the calculus integral of x squared dx."
     board: "cbse"
     class_level: 10
     subject: "science"
     expected_refusal: true
-    notes: "Negative refusal check: not in Class 10 Science textbook."
+    notes: "Negative refusal check: College calculus outside Class 10 Science scope."

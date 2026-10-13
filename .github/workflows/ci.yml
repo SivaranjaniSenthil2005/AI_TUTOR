@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend Tests & Safety Suite
+    runs-on: ubuntu-latest
+    env:
+      MOCK_LLM_PROVIDER: "1"
+      PYTHONPATH: backend:.
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "backend/requirements.txt"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest psutil matplotlib
+
+      - name: Run Secret Hygiene Scanner
+        run: |
+          python scripts/scan_secrets.py
+
+      - name: Run Backend Unit & RAG Tests
+        run: |
+          pytest backend/tests/ -v -k "not test_safety_live and not live_llm"
+
+      - name: Run Offline Safety & Prompt Injection Suite
+        run: |
+          pytest backend/tests/safety/test_safety.py -v
+
+  frontend:
+    name: Frontend Lint, Tests, Build & Playwright E2E
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_USE_MOCK: "1"
+      NEXT_PUBLIC_DEV_TOOLS: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Run Unit Tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build Next.js Application
+        working-directory: frontend
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E & Accessibility Audits
+        working-directory: frontend
+        run: npx playwright test

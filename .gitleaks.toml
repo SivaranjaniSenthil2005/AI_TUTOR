@@ -1,0 +1,18 @@
+# Gitleaks Configuration for AI Tutor
+title = "AI Tutor Secret Scanning Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlists for harmless sample strings and test mocks"
+paths = [
+  '''^\.env\.example$''',
+  '''^backend/tests/.*''',
+  '''^data/eval/gold_set\.example\.yaml$'''
+]
+regexes = [
+  '''mock-test-key-[a-zA-Z0-9]+''',
+  '''sk-mock[a-zA-Z0-9]+''',
+  '''fake-key-value'''
+]

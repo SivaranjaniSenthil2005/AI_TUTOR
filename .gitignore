@@ -41,8 +41,13 @@ data/processed/**
 data/index/
 data/index/**
 data/eval/gold_set.yaml
+data/eval/gold_set.*.yaml
 data/eval/gold_set.draft*.yaml
-data/eval/results_*.json
+data/eval/results/
+data/eval/results/**
+data/eval/gaze/
+data/eval/gaze/**
+data/eval/templates/
 data/**/*.pdf
 *.pdf
 data/*.draft.yaml

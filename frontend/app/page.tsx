@@ -59,19 +59,23 @@ export default function Home() {
   const [selectedSubject, setSelectedSubject] = useState<string>("science");
 
   // Onboarding state
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const completed = localStorage.getItem("ai_tutor_onboarding_completed");
-        const b = localStorage.getItem("ai_tutor_selected_board");
-        const s = localStorage.getItem("ai_tutor_selected_subject");
-        if (b) setSelectedBoard(b);
-        if (s) setSelectedSubject(s);
-        return completed === "true";
-      } catch {}
-    }
-    return false;
-  });
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(true);
+
+  // Sync saved selection on client mount
+  useEffect(() => {
+    try {
+      const completed = localStorage.getItem("ai_tutor_onboarding_completed");
+      if (completed === "true") {
+        setIsOnboardingCompleted(true);
+      } else {
+        setIsOnboardingCompleted(false);
+      }
+      const b = localStorage.getItem("ai_tutor_selected_board");
+      if (b) setSelectedBoard(b);
+      const s = localStorage.getItem("ai_tutor_selected_subject");
+      if (s) setSelectedSubject(s);
+    } catch {}
+  }, []);
 
   // Learner Profile Settings
   const [learnerSettings, setLearnerSettings] = useState<AppLearnerSettings>(() =>
@@ -282,16 +286,34 @@ export default function Home() {
 
                 <div className="flex items-center gap-2">
                   <GazeButton
-                    id="header-settings-btn"
-                    onClick={() => setIsSettingsOpen(true)}
-                    label="Settings"
-                    icon="⚙️"
+                    id="header-change-board-btn"
+                    onClick={handleChangeBoardSubject}
+                    label={`${selectedBoard.toUpperCase()} • ${selectedSubject === "science" ? "Science" : "Social"}`}
+                    icon="📚"
                     variant="card"
                     size="compact"
-                    className="!min-h-[44px] text-xs font-bold"
+                    className="!min-h-[44px] text-xs font-bold text-amber-300"
                   />
+                    <GazeButton
+                      id="header-settings-btn"
+                      onClick={() => setIsSettingsOpen(true)}
+                      label="Settings"
+                      icon="⚙️"
+                      variant="card"
+                      size="compact"
+                      className="!min-h-[44px] text-xs font-bold"
+                    />
+                    <GazeButton
+                      id="header-privacy-btn"
+                      onClick={() => setIsPrivacyOpen(true)}
+                      label="Privacy"
+                      icon="🛡️"
+                      variant="card"
+                      size="compact"
+                      className="!min-h-[44px] text-xs font-bold"
+                    />
+                  </div>
                 </div>
-              </div>
 
               {/* Scrollable Workspace Content with Smooth Edge Gaze Scrolling */}
               <GazeScrollArea className="flex-1 min-h-[460px] p-6">

@@ -13,9 +13,11 @@ CONTROL_CHAR_REGEX = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
 
 # Lightweight safety filters for unsafe, harmful, or non-educational content
 UNSAFE_PATTERNS = [
-    re.compile(r"\b(how to make|build|manufacture)\s+(a\s+)?(bomb|explosive|weapon|gun|poison)\b", re.I),
+    re.compile(r"\b(how to make|build|manufacture|synthesise|synthesize|assemble|create)\b.*?\b(bomb|explosive|weapon|gun|poison|toxin)\b", re.I),
     re.compile(r"\b(kill myself|suicide|self[- ]harm|commit suicide)\b", re.I),
-    re.compile(r"\b(hack into|steal passwords|ddos attack|credit card hack)\b", re.I),
+    re.compile(r"\b(hack into|steal passwords|ddos attack|credit card hack|ransomware|malware)\b", re.I),
+    re.compile(r"\b(cryptocurrency|bitcoin|crypto\s+profit|stock\s+forecast)\b", re.I),
+    re.compile(r"\b(political\s+election|who\s+is\s+going\s+to\s+win\s+the\s+next\s+election)\b", re.I),
 ]
 
 SAFETY_DECLINE_MESSAGE = (

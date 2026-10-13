@@ -501,7 +501,7 @@ async def stream_answer_question(
     clean_answer, suggested_questions = extract_suggested_questions(full_text)
     valid_sources, is_grounded = extract_citations(answer=clean_answer, chunks=chunks)
     speech = to_speech_text(clean_answer)
-    topic_hint = track_topic_hint(valid_sources) or initial_topic_hint
+    topic_hint = track_topic_hint(valid_sources) or rew_res.chapter_hint
     total_ms = (time.perf_counter() - t_start) * 1000
 
     yield {
