@@ -8,10 +8,11 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { ChevronUp, ChevronDown, Sparkles, Trash2, RotateCcw, Mic, Volume2 } from "lucide-react";
+import { ChevronUp, ChevronDown, Trash2, RotateCcw, Mic } from "lucide-react";
 import { GazeButton } from "@/components/ui/GazeButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AnswerCard } from "@/components/screens/AnswerCard";
+import { TutorMascot } from "@/components/ui/TutorMascot";
 import {
   askMachineTransition,
   initialSessionSnapshot,
@@ -70,6 +71,7 @@ export interface AskViewProps {
 
 export interface AskViewHandle {
   startVoice: () => void;
+  stopSpeaking: () => void;
   focusTypeInput: () => void;
   readAloudLatest: () => void;
   reAskLatestMode: (mode: "simple" | "step_by_step" | "example" | "exam") => void;
@@ -87,8 +89,8 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
     learnerSettings,
     stt,
     tts,
-    onChangeBoardSubject,
-    onOpenPrivacy,
+    onChangeBoardSubject: _onChangeBoardSubject,
+    onOpenPrivacy: _onOpenPrivacy,
     onSessionStateChange,
     onHasAnswerToReadChange,
   },
@@ -249,6 +251,7 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
       stt.reset();
       executeAsk(q, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.context.pendingVoiceTranscript, stt]);
 
   const handleConfirmRetry = useCallback(() => {
@@ -490,11 +493,13 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
       executeQuestion: (q: string) => {
         executeAsk(q, false);
       },
+      stopSpeaking: handleStopSpeaking,
       sessionState: session.state,
       hasAnswerToRead,
     }),
     [
       handleStartVoice,
+      handleStopSpeaking,
       latestTutorMsg,
       handleSpeakTutorMessage,
       executeAsk,
@@ -506,11 +511,11 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
   return (
     <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden relative">
       {/* Top Header of Ask Area: Topic Context, New Topic, and Clear Chat */}
-      <div className="h-14 px-4 sm:px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-secondary)] truncate">
-          <span>{boardName || board.toUpperCase()}</span>
+      <div className="h-14 px-4 sm:px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-2)] flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)] truncate">
+          <span>{boardName || (board === "tn" ? "Tamil Nadu" : "CBSE")}</span>
           <span>•</span>
-          <span className="text-amber-700 dark:text-amber-300 font-extrabold">{subjectName || subject}</span>
+          <span className="text-[var(--primary)] font-semibold">{subjectName || (subject === "science" ? "Science" : "Social Science")}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -519,9 +524,9 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             type="button"
             onClick={handleNewTopic}
             disabled={!capabilities.canClearHistory}
-            className="h-9 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:border-amber-500 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+            className="h-8 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
+            <RotateCcw className="w-3 h-3 text-[var(--primary)]" />
             <span className="hidden sm:inline">New Topic</span>
           </button>
           <button
@@ -529,16 +534,16 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             type="button"
             onClick={handleClearConversation}
             disabled={!capabilities.canClearHistory || messages.length === 0}
-            className="h-9 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:border-rose-400 text-[var(--text-muted)] hover:text-rose-600 dark:hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+            className="h-8 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:border-[var(--error)] text-[var(--text-muted)] hover:text-[var(--error)] text-xs font-semibold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3 h-3" />
             <span className="hidden sm:inline">Clear Chat</span>
           </button>
         </div>
       </div>
 
-      {/* Typed Question Bar (Always visible for direct typing and test reliability) */}
-      <div className="p-3 sm:p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex-shrink-0">
+      {/* Typed Question Bar */}
+      <div className="p-3 sm:p-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex-shrink-0">
         <form
           id="typed-question-form"
           onSubmit={handleTypedSubmit}
@@ -551,70 +556,81 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             value={typedInput}
             disabled={!capabilities.canType}
             onChange={(e) => setTypedInput(e.target.value)}
-            placeholder={`Ask a question (e.g. What is photosynthesis?)...`}
-            className="flex-1 h-12 bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] focus:border-amber-500 rounded-2xl px-4 text-base text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-4 focus:ring-amber-400/30 calm-fade disabled:opacity-50"
+            placeholder="Ask a question (e.g. What is photosynthesis?)..."
+            className="flex-1 h-11 bg-[var(--bg-surface-2)] border border-[var(--border-subtle)] focus:border-[var(--primary)] rounded-xl px-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]/20 calm-fade disabled:opacity-50"
           />
           <button
             id="typed-question-submit-btn"
             type="submit"
             disabled={!typedInput.trim() || !capabilities.canType}
-            className="h-12 px-6 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-base rounded-2xl calm-fade shadow cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 flex items-center gap-1.5 flex-shrink-0"
+            className="h-11 px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl calm-fade shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] flex items-center gap-1.5 flex-shrink-0"
           >
             <span>Ask</span>
           </button>
         </form>
       </div>
 
-      {/* Dynamic Voice Listening / Confirmation Card */}
+      {/* Dynamic Voice Listening State with soft pulse ring and listening mascot */}
       {session.state === "listening" && (
         <div
           id="voice-listening-card"
-          className="mx-4 sm:mx-6 my-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 text-center space-y-2 flex-shrink-0 calm-fade shadow-md"
+          className="mx-4 sm:mx-6 my-3 p-3.5 rounded-[20px] bg-[var(--teal-soft)]/40 border border-[var(--accent-teal)]/30 flex items-center justify-between gap-4 flex-shrink-0 calm-fade shadow-xs"
         >
-          <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 font-black text-sm uppercase tracking-wider">
-            <Mic className="w-5 h-5 animate-pulse" />
-            <span>I am listening... Speak now</span>
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 rounded-full bg-[var(--teal-soft)] text-[var(--accent-teal)] flex items-center justify-center flex-shrink-0">
+              {/* Soft pulse ring (opacity only) */}
+              <span className="absolute -inset-1 rounded-full border-2 border-[var(--accent-teal)] animate-gentle-pulse pointer-events-none" />
+              <Mic className="w-5 h-5 text-[var(--accent-teal)]" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-[var(--accent-teal)] tracking-wide">
+                Listening... Speak your question
+              </div>
+              <p className="text-base font-semibold text-[var(--text-primary)]">
+                {stt.transcript || "Listening..."}
+              </p>
+            </div>
           </div>
-          <p className="text-lg font-bold text-[var(--text-primary)] min-h-[28px]">
-            {stt.transcript || "Say your question..."}
-          </p>
-          <button
-            type="button"
-            onClick={handleStopListening}
-            className="px-4 py-1.5 bg-amber-400 text-slate-950 font-black text-xs rounded-xl hover:bg-amber-300 cursor-pointer"
-          >
-            Done Speaking
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <TutorMascot expression="listening" size={44} />
+            <button
+              type="button"
+              onClick={handleStopListening}
+              className="px-3.5 py-1.5 bg-[var(--primary)] text-white font-semibold text-xs rounded-xl hover:bg-[var(--primary-hover)] cursor-pointer shadow-xs"
+            >
+              Done Speaking
+            </button>
+          </div>
         </div>
       )}
 
       {session.state === "confirming" && (
         <div
           id="voice-confirmation-card"
-          className="mx-4 sm:mx-6 my-3 p-5 rounded-2xl bg-[var(--bg-surface)] border-4 border-amber-400 text-center space-y-4 flex-shrink-0 calm-fade shadow-xl"
+          className="mx-4 sm:mx-6 my-3 p-4 rounded-[20px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-center space-y-3 flex-shrink-0 calm-fade shadow-md"
         >
-          <div className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+          <div className="text-xs font-semibold text-[var(--text-muted)]">
             Did you say:
           </div>
-          <p className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
+          <p className="text-xl font-semibold text-[var(--text-primary)]">
             &ldquo;{session.context.pendingVoiceTranscript || stt.transcript}&rdquo;
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-w-md mx-auto">
             <GazeButton
               id="voice-confirm-yes-btn"
               onClick={handleConfirmYes}
               label="Yes, Ask Tutor"
-              variant="accent"
+              variant="primary"
               size="compact"
-              className="w-full justify-center !min-h-[56px] font-black"
+              className="w-full justify-center !min-h-[48px] font-semibold"
             />
             <GazeButton
               id="voice-confirm-retry-btn"
               onClick={handleConfirmRetry}
               label="Try Again"
-              variant="secondary"
+              variant="card"
               size="compact"
-              className="w-full justify-center !min-h-[56px]"
+              className="w-full justify-center !min-h-[48px]"
             />
             <GazeButton
               id="voice-confirm-cancel-btn"
@@ -622,21 +638,21 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
               label="Cancel"
               variant="outline"
               size="compact"
-              className="w-full justify-center !min-h-[56px]"
+              className="w-full justify-center !min-h-[48px]"
             />
           </div>
         </div>
       )}
 
       {/* Main Conversation Region with Docked Large Gaze Scroll Buttons */}
-      <div className="flex-1 min-h-0 flex items-stretch gap-4 p-4 sm:p-6 overflow-hidden">
+      <div className="flex-1 min-h-0 flex items-stretch gap-3 sm:gap-4 p-4 sm:p-5 overflow-hidden">
         {/* Scrollable Message List */}
         <div
           ref={scrollContainerRef}
           id="chat-scroll-container"
           tabIndex={0}
           aria-label="Tutor Conversation Messages"
-          className="flex-1 h-full stable-scroll-region space-y-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+          className="flex-1 h-full stable-scroll-region space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]/40"
         >
           {messages.length === 0 ? (
             <EmptyState
@@ -647,22 +663,22 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
               onSelectQuestion={(q) => executeAsk(q, false)}
             />
           ) : (
-            <div className="space-y-6 max-w-4xl mx-auto">
+            <div className="space-y-5 max-w-4xl mx-auto">
               {messages.map((msg) => {
                 if (msg.role === "student") {
                   return (
                     <div key={msg.id} className="flex justify-end">
-                      <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-amber-50 dark:bg-[#131f38] border-2 border-amber-300 dark:border-amber-400/50 shadow-sm">
-                        <div className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1.5 flex items-center justify-between gap-4">
+                      <div className="max-w-[75%] rounded-[20px] p-4 sm:p-5 bg-[var(--primary-soft)] text-[var(--text-primary)] border border-[var(--primary)]/20 shadow-xs">
+                        <div className="text-xs font-semibold text-[var(--primary)] mb-1 flex items-center justify-between gap-4">
                           <span>You</span>
-                          <span className="text-slate-500 dark:text-slate-400 font-normal">
+                          <span className="text-[var(--text-muted)] font-normal text-[11px]">
                             {new Date(msg.timestamp).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
                           </span>
                         </div>
-                        <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-relaxed">
+                        <p className="text-lg sm:text-xl font-medium text-[var(--text-primary)] leading-relaxed">
                           {msg.text}
                         </p>
                       </div>
@@ -683,6 +699,7 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
                       grounded={msg.grounded}
                       isStreaming={msg.isStreaming}
                       mode={msg.mode}
+                      subject={subject}
                       originalQuestion={msg.originalQuestion}
                       suggestedQuestions={msg.suggestedQuestions}
                       onSelectSuggestion={(q) => executeAsk(q, false)}
@@ -697,6 +714,29 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
                   </div>
                 );
               })}
+
+              {/* Friendly Thinking State Indicator with Mascot */}
+              {session.state === "thinking" && (
+                <div
+                  id="tutor-thinking-indicator"
+                  className="flex items-center gap-3 p-4 rounded-[20px] bg-[var(--bg-surface)] border border-[var(--border-subtle)] shadow-xs max-w-md"
+                >
+                  <TutorMascot expression="thinking" size={48} />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-[var(--primary)]">
+                      <span>Thinking</span>
+                      <span className="inline-flex gap-1 items-center">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-gentle-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-gentle-pulse [animation-delay:150ms]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-gentle-pulse [animation-delay:300ms]" />
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Finding the best explanation from your textbook...
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -704,17 +744,17 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
         {/* Docked Large Gaze Scroll Buttons beside chat area */}
         <aside
           aria-label="Chat Scroll Controls"
-          className="flex flex-col justify-between py-2 flex-shrink-0 w-28 sm:w-32 z-10"
+          className="flex flex-col justify-between py-2 flex-shrink-0 w-24 sm:w-28 z-10"
         >
           <GazeButton
             id="scroll-up-btn"
             onClick={handleScrollUp}
             label="Scroll Up"
-            icon={<ChevronUp className="w-6 h-6 text-amber-300" />}
+            icon={<ChevronUp className="w-5 h-5 text-[var(--primary)]" />}
             disabled={!canScrollUp}
             variant="card"
             size="default"
-            className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+            className="w-full !h-20 !min-h-[72px] flex-col justify-center items-center text-center font-semibold text-xs gap-1"
           />
 
           <div className="flex-1" />
@@ -723,11 +763,11 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             id="scroll-down-btn"
             onClick={handleScrollDown}
             label="Scroll Down"
-            icon={<ChevronDown className="w-6 h-6 text-amber-300" />}
+            icon={<ChevronDown className="w-5 h-5 text-[var(--primary)]" />}
             disabled={!canScrollDown}
             variant="card"
             size="default"
-            className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+            className="w-full !h-20 !min-h-[72px] flex-col justify-center items-center text-center font-semibold text-xs gap-1"
           />
         </aside>
       </div>

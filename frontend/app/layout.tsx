@@ -32,7 +32,7 @@ export default function RootLayout({
       className={`${lexend.variable} ${atkinson.variable} h-full antialiased`}
       data-font="lexend"
     >
-      <body className="h-full overflow-hidden select-none bg-[#070b14] text-[#f8fafc]">
+      <body className="h-full overflow-hidden select-none bg-[var(--bg-app)] text-[var(--text-primary)]">
         {children}
       </body>
     </html>

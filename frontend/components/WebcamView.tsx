@@ -16,7 +16,6 @@ import { useGazePoint, GazePoint } from "@/hooks/useGazePoint";
 import type { GazeDirection } from "@/lib/gaze/direction";
 import { GazeMapper } from "@/lib/calibration/mapper";
 import { LandmarkOverlay } from "./LandmarkOverlay";
-import { GazeDebugPanel } from "./GazeDebugPanel";
 import { CalibrationScreen } from "./CalibrationScreen";
 import { GazeDot } from "./GazeDot";
 
@@ -308,75 +307,46 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
         />
 
         <div
-          className={`flex flex-col h-full bg-[var(--bg-surface)] rounded-3xl border-4 border-[var(--border-subtle)] p-6 shadow-md ${className}`}
+          className={`flex flex-col h-full bg-[var(--bg-surface)] rounded-[20px] border border-[var(--border-subtle)] p-4 sm:p-5 shadow-[var(--shadow-card)] min-h-0 overflow-hidden ${className}`}
+          style={{ boxSizing: "border-box" }}
         >
-          {/* Header / Camera & Calibration Status */}
-          <div className="flex items-center justify-between pb-4 border-b-2 border-[var(--border-subtle)] mb-4">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl" role="img" aria-label="Webcam Icon">
-                👁️
-              </span>
+          {/* Header: Friendly Eye Icon, Title, Calibration Badge */}
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] mb-3 flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
-                  Gaze Camera
+                <h2 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] leading-tight">
+                  Eye Control
                 </h2>
-                <p className="text-sm font-semibold text-[var(--text-muted)]">
-                  Front-facing video & screen coordinate tracker
+                <p className="text-xs text-[var(--text-muted)] leading-tight">
+                  Look at buttons to select
                 </p>
               </div>
             </div>
 
             {/* Live Indicator & Calibration Badge */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               {mapper && (
                 <span
-                  className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
                     mapper.quality.grade === "good"
-                      ? "bg-emerald-950 text-emerald-300 border-emerald-500/60"
-                      : mapper.quality.grade === "okay"
-                      ? "bg-amber-950 text-amber-300 border-amber-500/60"
-                      : "bg-rose-950 text-rose-300 border-rose-500/60"
+                      ? "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/30"
+                      : "bg-[var(--warning-soft)] text-[var(--warning)] border-[var(--warning)]/30"
                   }`}
                 >
-                  {mapper.quality.grade} Calibration
+                  {mapper.quality.grade === "good" ? "Calibrated" : "Basic setup"}
                 </span>
               )}
-
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)]">
-                <span
-                  className={`w-3.5 h-3.5 rounded-full ${
-                    webcamStatus === "active"
-                      ? isFaceDetected
-                        ? "bg-emerald-400 shadow-[0_0_10px_#34d399]"
-                        : "bg-amber-400 shadow-[0_0_8px_#fbbf24]"
-                      : webcamStatus === "requesting"
-                      ? "bg-amber-400 animate-pulse"
-                      : webcamStatus === "denied" || webcamStatus === "error" || webcamStatus === "no-device"
-                      ? "bg-rose-500 shadow-[0_0_10px_#f43f5e]"
-                      : "bg-slate-400"
-                  }`}
-                />
-                <span className="text-xs sm:text-sm font-bold capitalize text-[var(--text-secondary)]">
-                  {webcamStatus === "active"
-                    ? isFaceDetected
-                      ? `Gaze: ${direction.toUpperCase()}`
-                      : "Searching Face"
-                    : webcamStatus === "requesting"
-                    ? "Starting..."
-                    : webcamStatus === "denied"
-                    ? "Permission Denied"
-                    : webcamStatus === "no-device"
-                    ? "No Camera"
-                    : webcamStatus === "error"
-                    ? "Camera Error"
-                    : "Camera Off"}
-                </span>
-              </div>
             </div>
           </div>
 
-          {/* Fixed 4:3 Video & Landmark Container (Identical size in both active & idle) */}
-          <div className="relative w-full aspect-[4/3] bg-[var(--bg-surface-raised)] rounded-2xl border-2 border-[var(--border-strong)] overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0">
+          {/* 4:3 Video Preview Container (Shrinks first if viewport is short with min-h-0 and max-h) */}
+          <div className="relative w-full aspect-[4/3] min-h-0 max-h-[220px] 2xl:max-h-[250px] flex-1 bg-[var(--bg-surface-2)] rounded-[16px] border border-[var(--border-subtle)] overflow-hidden flex items-center justify-center shadow-inner my-auto">
             {/* Mirrored Video Element */}
             <video
               ref={videoRef}
@@ -400,64 +370,63 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
 
             {/* Live Gaze Direction Bubble Indicator Over Video */}
             {webcamStatus === "active" && isFaceDetected && (
-              <div className="absolute top-3 left-3 bg-[var(--bg-surface)]/90 backdrop-blur-md border-2 border-amber-500/80 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-lg select-none">
-                <span className="text-base">
+              <div className="absolute top-2.5 left-2.5 bg-[var(--bg-surface)]/95 backdrop-blur-md border border-[var(--border-subtle)] px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm select-none">
+                <span className="text-xs text-[var(--primary)] font-bold">
                   {direction === "left" && "◀"}
                   {direction === "right" && "▶"}
                   {direction === "up" && "▲"}
                   {direction === "down" && "▼"}
                   {direction === "center" && "●"}
-                  {direction === "unknown" && "❓"}
+                  {direction === "unknown" && "·"}
                 </span>
-                <span className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                <span className="text-[11px] font-semibold capitalize text-[var(--text-primary)]">
                   {direction}
                 </span>
               </div>
             )}
 
-            {/* Idle State Overlay */}
+            {/* Friendly Placeholder when camera is off */}
             {webcamStatus === "idle" && (
-              <div className="p-8 text-center flex flex-col items-center max-w-md">
-                <div className="w-20 h-20 rounded-full bg-[var(--bg-surface)] border-2 border-[var(--border-strong)] flex items-center justify-center text-4xl mb-4 text-amber-600 dark:text-amber-400">
-                  📷
+              <div className="p-4 text-center flex flex-col items-center max-w-[260px]">
+                <div className="w-12 h-12 rounded-full bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mb-2 shadow-xs">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                 </div>
-                <h3 className="text-2xl font-black text-[var(--text-primary)] mb-2">
-                  Camera is Currently Off
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Camera is off
                 </h3>
-                <p className="text-lg text-[var(--text-secondary)] font-medium">
-                  Press <strong className="text-amber-700 dark:text-amber-400">Start Camera</strong> below to enable hands-free gaze navigation.
+                <p className="text-xs text-[var(--text-muted)] mt-1 leading-snug">
+                  Turn it on to use your eyes to control AI Tutor
                 </p>
               </div>
             )}
 
             {/* Requesting State Overlay */}
             {webcamStatus === "requesting" && (
-              <div className="p-8 text-center flex flex-col items-center max-w-md">
-                <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
-                <h3 className="text-2xl font-black text-[var(--text-primary)] mb-2">
-                  Requesting Camera Access...
-                </h3>
-                <p className="text-lg text-amber-700 dark:text-amber-300 font-medium">
-                  Please click <strong>&quot;Allow&quot;</strong> in your browser when prompted.
+              <div className="p-4 text-center flex flex-col items-center">
+                <div className="w-8 h-8 border-3 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-xs font-semibold text-[var(--text-primary)]">
+                  Requesting camera access...
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                  Click &quot;Allow&quot; in your browser
                 </p>
               </div>
             )}
 
             {/* Denied / Error / No-Device Overlays */}
             {(webcamStatus === "denied" || webcamStatus === "error" || webcamStatus === "no-device") && (
-              <div className="p-8 text-center flex flex-col items-center max-w-lg">
-                <div className="w-20 h-20 rounded-full bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-500 flex items-center justify-center text-4xl mb-4 text-rose-600 dark:text-rose-400">
+              <div className="p-4 text-center flex flex-col items-center max-w-[260px]">
+                <div className="w-10 h-10 rounded-full bg-[var(--error-soft)] text-[var(--error)] flex items-center justify-center mb-2">
                   ⚠️
                 </div>
-                <h3 className="text-2xl font-black text-rose-700 dark:text-rose-300 mb-2">
-                  {webcamStatus === "denied"
-                    ? "Camera Access Blocked"
-                    : webcamStatus === "no-device"
-                    ? "No Webcam Detected"
-                    : "Camera Notice"}
-                </h3>
-                <p className="text-lg text-[var(--text-secondary)] font-medium bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-xl p-4">
-                  {webcamError}
+                <p className="text-xs font-semibold text-[var(--error)]">
+                  {webcamStatus === "denied" ? "Camera access blocked" : "Camera unavailable"}
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                  {webcamError || "Please check camera permissions in browser settings"}
                 </p>
               </div>
             )}
@@ -465,47 +434,45 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
 
           {/* Viewport Deviation Notice Banner */}
           {viewportNotice && (
-            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/90 border-2 border-amber-400 rounded-xl text-amber-800 dark:text-amber-200 text-sm font-semibold flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span>⚠️</span>
-                <span>{viewportNotice}</span>
-              </div>
+            <div className="my-2 p-2 bg-[var(--warning-soft)] border border-[var(--warning)]/30 rounded-xl text-[var(--warning)] text-xs font-medium flex items-center justify-between gap-2 flex-shrink-0">
+              <span className="truncate">{viewportNotice}</span>
               <button
+                type="button"
                 onClick={() => setCalibrationOpen(true)}
-                className="px-3 py-1 bg-amber-500 text-white dark:text-slate-950 font-black rounded-lg text-xs cursor-pointer hover:bg-amber-400"
+                className="px-2 py-0.5 bg-[var(--warning)] text-white font-semibold rounded-md text-[11px] flex-shrink-0 hover:brightness-105"
               >
                 Recalibrate
               </button>
             </div>
           )}
 
-          {/* Reserved Fixed-Height Friendly Status Slot */}
-          <div className="h-12 w-full mt-3 flex items-center justify-between px-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] text-xs font-bold flex-shrink-0">
+          {/* One-Line Status with Colored Dot and Plain Words */}
+          <div className="h-9 w-full my-2.5 flex items-center justify-between px-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface-2)] text-xs font-medium flex-shrink-0">
             {webcamStatus === "active" ? (
               landmarkStatus === "tracking" ? (
-                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#34d399]" />
+                <div className="flex items-center gap-2 text-[var(--success)]">
+                  <span className="w-2 h-2 rounded-full bg-[var(--success)] ring-2 ring-[var(--success-soft)]" />
                   <span>I can see you</span>
                 </div>
               ) : landmarkStatus === "loading" ? (
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <div className="flex items-center gap-2 text-[var(--warning)]">
+                  <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" />
                   <span>Loading eye tracker...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <div className="flex items-center gap-2 text-[var(--warning)]">
+                  <span className="w-2 h-2 rounded-full bg-[var(--warning)]" />
                   <span>Move closer to camera</span>
                 </div>
               )
             ) : webcamStatus === "requesting" ? (
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <div className="flex items-center gap-2 text-[var(--warning)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" />
                 <span>Starting camera...</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
                 <span>Camera is off</span>
               </div>
             )}
@@ -514,22 +481,22 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
               <button
                 type="button"
                 onClick={() => setCalibrationOpen(true)}
-                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-white dark:text-slate-950 text-xs font-black rounded-lg border border-amber-400 cursor-pointer calm-fade"
+                className="px-2 py-0.5 bg-[var(--primary)] text-white text-[11px] font-semibold rounded-md hover:bg-[var(--primary-hover)] cursor-pointer calm-fade"
               >
                 Setup Eyes
               </button>
             )}
           </div>
 
-          {/* Primary Action Button (min 60px height) */}
-          <div className="mt-4 flex flex-col gap-3">
+          {/* Pinned Start/Stop Camera Button inside Card (Always visible, never clipped) */}
+          <div className="mt-auto pt-1 flex flex-col gap-2 flex-shrink-0">
             {webcamStatus !== "active" ? (
               <button
                 id="start-camera-btn"
                 type="button"
                 onClick={start}
                 disabled={webcamStatus === "requesting"}
-                className="w-full min-h-[60px] py-3.5 px-6 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white dark:text-slate-950 font-black text-xl tracking-wide shadow-md border-2 border-amber-400 calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-[52px] min-h-[52px] rounded-[20px] bg-brand-gradient hover:brightness-105 active:brightness-95 text-white font-semibold text-base shadow-[0_4px_16px_rgba(79,70,229,0.25)] border-0 calm-fade focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>Start Camera</span>
               </button>
@@ -538,19 +505,17 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
                 id="stop-camera-btn"
                 type="button"
                 onClick={stop}
-                className="w-full min-h-[60px] py-3.5 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xl tracking-wide shadow-md border-2 border-rose-500 calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-400 flex items-center justify-center gap-3 cursor-pointer"
+                className="w-full h-[52px] min-h-[52px] rounded-[20px] bg-[var(--error-soft)] hover:bg-[var(--error-soft)]/80 text-[var(--error)] font-semibold text-base shadow-xs border border-[var(--error)]/30 calm-fade focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Stop Camera</span>
               </button>
             )}
 
             {/* Privacy Note */}
-            <div className="flex items-center justify-center gap-2 text-center text-sm font-semibold text-[var(--text-muted)] bg-[var(--bg-surface-raised)] py-2 px-4 rounded-xl border border-[var(--border-subtle)]">
-              <span className="text-base" role="img" aria-label="Privacy Shield">
-                🛡️
-              </span>
-              <span>
-                Your camera video stays in this browser. It is not recorded or sent anywhere.
+            <div className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium text-[var(--text-muted)] bg-[var(--bg-surface-2)] py-1.5 px-3 rounded-xl border border-[var(--border-subtle)]">
+              <span>🛡️</span>
+              <span className="truncate">
+                Video stays in this browser. Never recorded or sent anywhere.
               </span>
             </div>
           </div>

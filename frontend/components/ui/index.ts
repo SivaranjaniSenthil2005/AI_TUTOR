@@ -11,3 +11,4 @@ export { Toast, type ToastProps, type ToastType } from "./Toast";
 export { ProgressRing, type ProgressRingProps } from "./ProgressRing";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
+export { TutorMascot, type TutorMascotProps, type MascotExpression } from "./TutorMascot";

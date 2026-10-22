@@ -3,25 +3,26 @@
 import React from "react";
 
 export interface ChipProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "amber" | "teal" | "purple" | "slate" | "rose" | "cyan";
+  variant?: "indigo" | "teal" | "purple" | "slate" | "rose" | "sky" | "amber";
   icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
 export function Chip({
-  variant = "amber",
+  variant = "indigo",
   icon,
   children,
   className = "",
   ...props
 }: ChipProps) {
   const variantClasses = {
-    amber: "bg-amber-400/15 text-amber-300 border-amber-400/30",
-    teal: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    purple: "bg-purple-500/15 text-purple-300 border-purple-500/30",
-    slate: "bg-slate-800 text-slate-300 border-slate-700",
-    rose: "bg-rose-500/15 text-rose-300 border-rose-500/30",
-    cyan: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+    indigo: "bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--primary)]/30",
+    teal: "bg-[var(--teal-soft)] text-[var(--accent-teal)] border-[var(--accent-teal)]/30",
+    purple: "bg-[var(--violet-soft)] text-[var(--secondary-violet)] border-[var(--secondary-violet)]/30",
+    slate: "bg-[var(--bg-surface-2)] text-[var(--text-muted)] border-[var(--border-subtle)]",
+    rose: "bg-[var(--error-soft)] text-[var(--error)] border-[var(--error)]/30",
+    sky: "bg-[var(--sky-soft)] text-[var(--sky)] border-[var(--sky)]/30",
+    amber: "bg-[var(--warning-soft)] text-[var(--warning)] border-[var(--warning)]/30",
   }[variant];
 
   return (

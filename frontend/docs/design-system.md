@@ -1,112 +1,126 @@
-# AI Tutor Design System & Stability Architecture
+# AI Tutor Design System & Accessible Learning Platform Architecture
 
-> Accessible, calm, neurodiverse-adapted design system for school learners, engineered for rock-solid eye-gaze and voice navigation.
-
----
-
-## 1. Gaze Stability Rules ("Gaze Targets Never Move")
-
-In eye-tracking user interfaces, **target stability is the single most critical engineering requirement**. If a button shifts by even a few pixels when a student fixates on it, the calibration offset drifts, triggering eye fatigue or accidental "Midas Touch" activations.
-
-All future contributors must follow these strict rules:
-
-1. **Zero Transform on Interaction:**
-   - **NEVER** use `transform: scale(...)` or `transform: translate(...)` on hover, focus, dwell, active, or click states.
-   - Scale animations on buttons make the physical bounding box change under the gaze point, corrupting hit tests.
-2. **Reserve Border Space Always:**
-   - Use `box-sizing: border-box`.
-   - Never change `border-width` or `padding` on state transitions. Reserve the full border thickness (e.g. 4px) in the default idle state.
-3. **Show State Changes Visually Without Layout Shifts:**
-   - Dwell progress is shown via an **inner SVG ring** or a **bottom progress bar inside the button box**.
-   - Activation is communicated via a brief background color flash and sound chime—never a dimensional bounce.
-4. **Stable React Mounting & Keys:**
-   - Gaze targets must maintain stable React keys.
-   - Never conditionally unmount/remount a target while the gaze is fixated on it.
-   - When a target is unavailable, **disable it visually** (`disabled`, muted opacity) rather than unmounting it.
-5. **No Page-Level Scrolling:**
-   - The application root shell is constrained to `height: 100dvh; overflow: hidden;`.
-   - Only designated inner content containers scroll (e.g. conversation messages and drawer content) using `overscroll-behavior: contain` and `scrollbar-gutter: stable`.
-6. **Rect Cache Freezing:**
-   - Target rects are cached to prevent layout thrashing.
-   - When a target is active and dwelling, its cached bounding box is **strictly frozen** until the dwell sequence completes or resets.
-7. **Explicit Scroll Buttons:**
-   - Scrolling is controlled through explicit, large docked "Scroll Up" and "Scroll Down" gaze buttons beside the chat area.
+> Modern, bright, neurodiverse-adapted design system for school learners, engineered for rock-solid eye-gaze control and voice navigation.
 
 ---
 
-## 2. Core Design Tokens
+## 1. Core Principles & Mood
 
-### Color Palette
-
-| Token | Light Theme (Default) | Calm (Dark Option) | High Contrast | Usage |
-| :--- | :--- | :--- | :--- | :--- |
-| `--bg-app` | `#f1f5f9` (Soft Slate Canvas) | `#070b14` (Deep Navy) | `#000000` (Pure Black) | Main viewport backdrop |
-| `--bg-surface` | `#ffffff` (Pure White) | `#0d1527` (Midnight) | `#000000` | Header, Bottom dock, Cards |
-| `--bg-surface-raised` | `#f8fafc` (Slate 50) | `#131f38` (Navy Raised) | `#111111` | Status slots, inputs, tabs |
-| `--border-subtle` | `#e2e8f0` (Slate 200) | `#1e293b` (Slate 800) | `#facc15` | Card and section borders |
-| `--accent-primary` | `#f59e0b` (Amber 500) | `#fbbf24` (Amber 400) | `#facc15` (Bright Yellow) | Primary gaze action |
-| `--teal-success` | `#059669` (Emerald 600) | `#10b981` (Emerald 500) | `#34d399` | Ready / Tracking status |
-| `--coral-warning` | `#e11d48` (Rose 600) | `#fb7185` (Rose 400) | `#fda4af` | Caution / Error state |
-| `--text-primary` | `#0f172a` (Slate 900) | `#f8fafc` (Slate 50) | `#ffffff` | Headings and answers |
-| `--text-secondary`| `#334155` (Slate 700) | `#94a3b8` (Slate 400) | `#fef08a` | Subtitles and chips |
-| `--text-muted` | `#64748b` (Slate 500) | `#64748b` (Slate 500) | `#ffffff` | Helper and timestamp text |
-
-### Spacing Scale (8px Grid)
-
-- `space-1`: 4px (micro spacing)
-- `space-2`: 8px (base gap)
-- `space-3`: 12px (pill padding)
-- `space-4`: 16px (card inner padding)
-- `space-5`: 20px
-- `space-6`: 24px (enforced minimum gap between neighboring gaze targets)
-- `space-8`: 32px
-
-### Border Radii
-
-- Buttons & Cards: `20px` (`rounded-[20px]`)
-- Status Pills & Badges: `12px` / `9999px` (Full pill)
-- Large Modals: `24px`
-
-### Typography Scale
-
-- **Default Font:** `Lexend` (Google Font via `next/font/google`), engineered specifically to reduce visual stress and reading fatigue.
-- **Alternative Fonts:** `Atkinson Hyperlegible` (Braille Institute) and `OpenDyslexic` (bundled locally with SIL Open Font License in `/fonts/`).
-- **Answer Text:** Base `22px - 24px`, line-height `1.6`, maximum line length `~65ch`.
-- **Button Labels:** `16px - 20px`, font weight `800 - 900`.
-- **Labels / Tags:** `12px - 14px`, uppercase tracking `0.05em`.
-
-### Motion & Transitions
-
-- Durations: `150ms - 200ms` only.
-- Transitions: Color, opacity, and box-shadow only.
-- Respects `prefers-reduced-motion` and the in-app `reducedMotion` setting by disabling animations instantly.
+The AI Tutor UI is designed to feel:
+- **Inviting & Calm:** Clean, airy layouts, soft shadows, rounded surfaces, gentle whitespace, and low visual clutter for neurodiverse school learners.
+- **Predictable & Stable:** Gaze targets never move, shift, or resize during any interaction or state change. The entire application runs within a strictly constrained `100dvh` shell with zero page-level scrolling.
+- **Motivating & Friendly:** Features the original **"Tutor Buddy"** SVG mascot with 4 dynamic expressions (idle, listening, thinking, speaking) that respond to student learning moments.
 
 ---
 
-## 3. Component Architecture
+## 2. Design Tokens
 
-All UI components reside in `frontend/components/ui/`:
+### Theme 1: "Bright" (Default Light Theme)
+- **Background (`--bg-app`):** `#F6F8FF` (soft, airy blue-white canvas)
+- **Card Surface (`--bg-surface`):** `#FFFFFF` (clean white)
+- **Secondary Surface (`--bg-surface-2`):** `#EEF2FF` (tinted soft indigo)
+- **Card Border (`--border-subtle`):** `#DDE3F5` (1px soft border)
+- **Card Shadow (`--shadow-card`):** `0 8px 24px rgba(79, 70, 229, 0.08)`
+- **Text Primary (`--text-primary`):** `#1B2340` (deep navy ink, passes WCAG AAA on white)
+- **Text Muted (`--text-muted`):** `#5A6485` (calm slate blue, passes WCAG AA 4.6:1)
+- **Text on Primary (`--text-on-primary`):** `#FFFFFF`
+- **Primary Brand Indigo (`--primary`):** `#4F46E5` (Hover: `#4338CA`, Soft: `#E0E7FF`)
+- **Secondary Violet (`--secondary-violet`):** `#7C3AED` (Soft: `#EDE9FE`)
+- **Accent Teal (`--accent-teal`):** `#0D9488` (Soft: `#CCFBF1`)
+- **Sky (`--sky`):** `#0284C7` (Soft: `#E0F2FE`)
+- **Success (`--success`):** `#15803D` (Soft: `#DCFCE7`)
+- **Warning (`--warning`):** `#B45309` (Soft: `#FEF3C7`)
+- **Error (`--error`):** `#BE123C` (Soft: `#FFE4E6`)
+- **Focus Ring (`--focus-ring`):** `#1D4ED8` (3px with 2px white offset)
+- **Dwell Progress Ring (`--dwell-ring`):** `#F59E0B` *(The ONLY place amber is used as a strong color, plus small warning accents)*
+- **Brand Gradient:** `linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)` (used on logo mark, greeting banner, and primary gaze buttons)
 
-- `GazeButton.tsx`: Accessible gaze button with inner progress ring or bottom bar, zero-scale flash feedback, and `data-gaze-id`.
-- `Button.tsx`: Keyboard and mouse accessible standard button.
-- `IconButton.tsx`: Clean icon button with accessible text labels.
-- `Card.tsx`: Calm surface container with reserved min-heights.
-- `Chip.tsx`: Colored status and mode badges.
-- `StatusPill.tsx`: Fixed-size (148px) top bar pills for server, camera, eyes, and mic.
-- `SegmentedControl.tsx`: Large multi-option radio controls.
-- `Stepper.tsx`: Big minus/plus steppers for motor-accessible adjustment.
-- `Drawer.tsx`: Right-side slide-over drawer for settings.
-- `Toast.tsx`: Non-layout-shifting floating notification overlay.
-- `ProgressRing.tsx`: SVG circular progress indicator.
-- `EmptyState.tsx`: Greeting state with syllabus-grounded starter questions.
-- `Skeleton.tsx`: Reserved-space skeleton loaders for streaming responses.
+### Theme 2: "Calm Night" (Dark Option)
+- **Background (`--bg-app`):** `#0F1226`
+- **Card Surface (`--bg-surface`):** `#181C3A`
+- **Secondary Surface (`--bg-surface-2`):** `#20254A`
+- **Border (`--border-subtle`):** `#2E345F`
+- **Text Primary (`--text-primary`):** `#EEF1FF`
+- **Text Muted (`--text-muted`):** `#A9B0D6`
+- **Primary (`--primary`):** `#818CF8` (Text on Primary: `#0B1030`)
+- **Teal:** `#2DD4BF` | **Violet:** `#A78BFA` | **Sky:** `#38BDF8`
+- **Success:** `#4ADE80` | **Warning:** `#FBBF24` | **Error:** `#FB7185`
+- **Focus Ring:** `#93C5FD` | **Dwell Ring:** `#FBBF24`
+- **Brand Gradient:** `linear-gradient(135deg, #818CF8 0%, #A78BFA 100%)`
 
-Screen-level components reside in `frontend/components/screens/`:
-- `TopBar.tsx`: Slim 64px header.
-- `BottomDock.tsx`: Fixed 112px bottom control bar with 4 primary gaze targets.
-- `ConversationArea.tsx`: Scrollable conversation feed with docked explicit scroll buttons.
-- `AnswerCard.tsx`: Formatted tutor answer card with numbered steps and source citations.
-- `SettingsDrawer.tsx`: Multi-tab drawer for Eye Control, Voice, Reading, Display, and Privacy.
-- `TypeQuestionModal.tsx`: Keyboard question input.
-- `ExplainModeModal.tsx`: Neurodiverse learning mode chooser.
-- `BoardSubjectModal.tsx`: Educational board and subject switcher.
+### Theme 3: "High Contrast" (Accessibility)
+- **Background (`--bg-app`):** `#000000`
+- **Card Surface (`--bg-surface`):** `#0A0A0A`
+- **Text Primary (`--text-primary`):** `#FFFFFF`
+- **Borders (`--border-subtle`):** `#FFFFFF` (2px solid)
+- **Primary (`--primary`):** `#FFFFFF` (Text: `#000000`)
+- **Focus Ring (`--focus-ring`):** `#00E5FF` (4px solid cyan)
+- **Dwell Ring (`--dwell-ring`):** `#FFD400`
+- Every state differentiated by **shape, icon, and text**, never color alone.
+
+---
+
+## 3. Subject Color Coding & Learning Modes
+
+Every educational category is coded with **icon + text + color** (never color alone):
+
+| Subject | Color Token | Soft Surface | Icon |
+| :--- | :--- | :--- | :--- |
+| **Science** | Accent Teal (`#0D9488`) | `#CCFBF1` | `<Atom />` |
+| **Social Science** | Secondary Violet (`#7C3AED`) | `#EDE9FE` | `<Globe />` |
+
+Learning Modes (segmented control & answer chip):
+- **Simple:** Sky (`#0284C7`) with `<Sparkles />`
+- **Step by step:** Violet (`#7C3AED`) with `<ListOrdered />`
+- **Example:** Teal (`#0D9488`) with `<Lightbulb />`
+- **Exam style:** Indigo (`#4F46E5`) with `<GraduationCap />`
+
+---
+
+## 4. Typography Scale (Lexend)
+
+Engineered specifically with **Lexend** (via `next/font/google`) to reduce reading fatigue for dyslexic and neurodiverse learners.
+
+- **Scale:**
+  - 14px: Captions, helper text, status labels
+  - 16px: Body text, secondary buttons, dock subtitles
+  - 18px: Card subtitles, modal prompts
+  - 22px: **Tutor Answer text** (optimized reading size, line-height 1.6)
+  - 28px: Section headers, modal titles
+  - 36px: Welcome greeting headline
+- **Weights:** `400` (Regular), `500` (Medium), `600` (Semibold for headings and buttons). *Never 800-900 heavy black.*
+- **Casing:** Normal-case headings (e.g., "You can also ask" instead of all-caps).
+
+---
+
+## 5. Gaze Stability & Target Invariance Rules
+
+1. **Zero Transform:** Never use CSS `transform: scale(...)` or `translate(...)` on hover, gaze-on, or active states.
+2. **Fixed 100dvh Grid Shell:** The layout uses an explicit 3-row grid:
+   - Top Bar: `64px` fixed
+   - Main Area: `minmax(0, 1fr)`
+   - Bottom Dock: `112px` fixed
+3. **No Ellipsis Truncation on Gaze Buttons:** All button labels use `text-wrap: balance` and room for up to 2 lines without hyphenated syllable breakage (`break-normal`).
+4. **Pinned Card Controls:** The camera card pins its Start/Stop button inside the flex column (`mt-auto flex-shrink-0`), guaranteeing it is never pushed outside the viewport on short screens.
+5. **Inner Dwell Progress:** Gaze progress is communicated strictly through an internal SVG progress ring or bottom bar within the button boundary.
+
+---
+
+## 6. Color-Blind Safety Verification
+
+Automated token contrast testing and simulated vision tests verify accessibility across all color vision types:
+
+- **Protanopia (Red-Blind):** All critical actions feature distinguishable iconography and text (e.g. microphone icon for "Ask with Voice", checkmark badges for active states, warning triangle icons for alerts).
+- **Deuteranopia (Green-Blind):** Success states combine green color with checkmark icons (`<Check />` or `<CheckCircle2 />`) and explicit text labels ("Server connected", "Ready").
+- **Tritanopia (Blue-Blind):** Subject color coding pairs Teal with `<Atom />` and Violet with `<Globe />`. Gaze dwell rings use High-Visibility Amber (`#F59E0B`), which retains high luminance contrast.
+- **Monochromacy / Achromatopsia:** High Contrast theme provides pure black/white distinction with 2px borders, 4px focus rings, and explicit textual state feedback.
+
+---
+
+## 7. Strict "Don'ts"
+
+- ❌ **No Yellow/Orange Fills:** Yellow or orange must never be used as a primary or dominant fill color anywhere in the application. (Amber `#F59E0B` is reserved strictly for dwell progress rings and small warning icons).
+- ❌ **No Ellipsis Truncation on Action Buttons:** Gaze targets must clearly display their full readable label.
+- ❌ **No Target Movement:** Bounding boxes must not shift by more than 1px across any modal, stream, or camera state transition.
+- ❌ **No Color-Only Meaning:** Every status dot, badge, and mode chip must have accompanying text or iconography.
+- ❌ **No Page-Level Scrolling:** Body scroll is strictly disabled; only designated inner containers scroll with scrollbar stability.

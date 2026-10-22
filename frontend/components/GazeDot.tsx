@@ -56,13 +56,13 @@ export function GazeDot({ gazePointRef, visible = true, isPaused = false }: Gaze
         className={`absolute inset-0 rounded-full transition-all duration-200 ${
           isPaused
             ? "bg-slate-500/20 border-2 border-dashed border-slate-400"
-            : "bg-amber-400/30 border-2 border-amber-300 shadow-[0_0_15px_#fbbf24] animate-pulse"
+            : "bg-[var(--primary-soft)]/60 border-2 border-[var(--primary)] shadow-[0_0_15px_rgba(79,70,229,0.35)] animate-pulse"
         }`}
       />
       {/* Inner Pupil Center Dot */}
       <div
         className={`w-2.5 h-2.5 rounded-full transition-colors ${
-          isPaused ? "bg-slate-400" : "bg-amber-300 shadow-md border border-slate-950"
+          isPaused ? "bg-slate-400" : "bg-[var(--primary)] shadow-md border border-white"
         }`}
       />
     </div>

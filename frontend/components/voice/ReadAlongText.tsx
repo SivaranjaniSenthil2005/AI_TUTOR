@@ -62,7 +62,7 @@ export function ReadAlongText({
         return (
           <span
             key={idx}
-            className="inline-block bg-amber-400/25 text-white font-medium border-l-4 border-amber-400 px-2 py-0.5 rounded-r shadow-[0_0_12px_rgba(251,191,36,0.2)] transition-all duration-150 mr-1"
+            className="inline-block bg-[var(--primary-soft)] text-[var(--text-primary)] font-medium border-l-4 border-[var(--primary)] px-2 py-0.5 rounded-r shadow-xs transition-all duration-150 mr-1"
           >
             {words.map((word, wIdx) => {
               const wordStart = charCount;
@@ -80,7 +80,7 @@ export function ReadAlongText({
                 return (
                   <span
                     key={wIdx}
-                    className="bg-amber-300 text-slate-950 font-black px-1.5 py-0.5 rounded shadow-sm scale-105 inline-block transition-transform duration-100"
+                    className="bg-[var(--primary)] text-white font-semibold px-1.5 py-0.5 rounded shadow-xs scale-105 inline-block transition-transform duration-100"
                   >
                     {word}
                   </span>

@@ -109,7 +109,7 @@ The frontend UI/UX has been redesigned from the ground up for neurodiverse Class
 | Rock-Solid 9-Point Calibration Layer | High Contrast & Light Themes |
 | :---: | :---: |
 | ![Calibration Screen](docs/screenshots/09_calibration_screen_1366x768.png) | ![Theme High Contrast](docs/screenshots/11_theme_high_contrast_1366x768.png) |
-| *Full-viewport isolated overlay with static dot centers and shrinking SVG timer rings* | *Theme options: Calm (navy/warm yellow), Light (soft off-white), and High Contrast (pure black)* |
+| *Full-viewport isolated overlay with static dot centers and shrinking SVG timer rings* | *Theme options: Bright (modern learning platform, default), Calm Night (indigo/slate dark), and High Contrast* |
 
 ---
 
@@ -117,15 +117,16 @@ The frontend UI/UX has been redesigned from the ground up for neurodiverse Class
 
 AI Tutor implements a purpose-built design system documented in [`frontend/docs/design-system.md`](frontend/docs/design-system.md) and previewable live at the dev-only **`/design`** route:
 
-- **Calm Color Palette:**
-  - **Calm (Default):** Deep midnight slate (`#070b14`, `#0d1527`), soft warm yellow accents (`#fbbf24`), calming teal (`#14b8a6`), and gentle coral warnings (`#f87171`).
-  - **Light Theme:** Soft off-white canvas (`#f8fafc`, `#ffffff`) with amber and deep slate typography, minimizing eye strain.
-  - **High Contrast Theme:** Pitch-black background (`#000000`) with high-voltage yellow (`#facc15`) and pure white borders meeting WCAG AAA standard.
+- **Friendly, Modern Learning Platform Palette:**
+  - **Bright (Default):** Airy blue-white canvas (`#F6F8FF`), white card surfaces, soft indigo (`#EEF2FF`), brand indigo (`#4F46E5`), secondary violet (`#7C3AED`), accent teal (`#0D9488`), and gentle warning accents (`#B45309`), completely eliminating harsh dark navy and heavy yellow fills.
+  - **Calm Night (Dark Option):** Deep midnight slate (`#0F1226`, `#181C3A`), soft indigo (`#818CF8`), calming teal (`#2DD4BF`), and gentle warning accents (`#FBBF24`).
+  - **High Contrast Theme:** Pitch-black background (`#000000`) with pure white surfaces, 2px borders, and 4px cyan focus rings (`#00E5FF`).
+- **Original Mascot ("Tutor Buddy"):** Original SVG character with 4 expressions (idle, listening, thinking, speaking) designed from scratch to encourage and guide neurodiverse learners.
 - **Reading-Optimized Typography:**
   - Default font: **Lexend** (specifically engineered to reduce visual crowding and enhance reading fluency for neurodiverse students).
   - Alternative dyslexia-friendly fonts: **Atkinson Hyperlegible** and locally bundled **OpenDyslexic**.
   - Stepped sizing (100%, 125%, 150%) and adjustable line spacing (1.4 to 1.8).
-- **Uniform Iconography:** Pure `lucide-react` line icons paired with explicit text labels—eliminating emoji inconsistency and ambiguous iconography.
+- **Uniform Iconography:** Pure `lucide-react` line icons paired with explicit text labels—eliminating ambiguous iconography.
 - **Visual Clarity & Focus Mode:**
   - Dedicated **Focus Mode** (`gazeSettings.focusMode`) hides peripheral widgets (camera card, status pills) and isolates the conversation and bottom dock.
 - **Interactive Component Library:** Standardized accessible components located in `frontend/components/ui/` (`GazeButton`, `StatusPill`, `Card`, `Chip`, `SegmentedControl`, `Stepper`, `Drawer`, `Toast`, `EmptyState`, `Skeleton`).

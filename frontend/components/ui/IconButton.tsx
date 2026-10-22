@@ -31,11 +31,11 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 
     const variantClasses = {
       ghost:
-        "bg-transparent text-slate-300 border-2 border-transparent hover:bg-slate-800/60 hover:text-white",
+        "bg-transparent text-[var(--text-muted)] border-0 hover:bg-[var(--bg-surface-2)] hover:text-[var(--text-primary)]",
       secondary:
-        "bg-[#0d1527] text-slate-200 border-2 border-slate-700 hover:border-slate-500 hover:bg-[#131f38]",
+        "bg-[var(--bg-surface-2)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--bg-surface)]",
       accent:
-        "bg-amber-400 text-slate-950 border-2 border-amber-300 hover:bg-amber-300 shadow-sm",
+        "bg-brand-gradient text-white border-0 hover:brightness-105 shadow-sm",
     }[variant];
 
     return (
@@ -49,7 +49,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           e.currentTarget.focus({ preventScroll: true });
           if (!disabled && onClick) onClick(e);
         }}
-        className={`inline-flex items-center justify-center select-none cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/80 disabled:opacity-40 disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
+        className={`inline-flex items-center justify-center select-none cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] disabled:opacity-40 disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
         {...props}
       >
         <span aria-hidden="true">{icon}</span>

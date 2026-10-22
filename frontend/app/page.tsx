@@ -103,6 +103,7 @@ function HomeContent({
   useEffect(() => {
     try {
       const b = localStorage.getItem("ai_tutor_selected_board");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (b) setSelectedBoard(b);
       const s = localStorage.getItem("ai_tutor_selected_subject");
       if (s) setSelectedSubject(s);
@@ -246,15 +247,26 @@ function HomeContent({
       />
 
       {/* 2. MAIN WORKSPACE (2 Columns with minmax(0, 1fr) that never overflow) */}
-      <main className="flex-1 min-h-0 overflow-hidden p-3 sm:p-5">
+      <main className="flex-1 min-h-0 min-w-0 overflow-hidden p-3 sm:p-5 relative">
+        {/* Ambient decorative blurred shapes behind main area (hidden in focus mode & high contrast) */}
         <div
-          className={`h-full grid gap-4 sm:gap-6 ${
+          className="bg-ambient-blob w-[480px] h-[480px] bg-indigo-500/10 -top-24 -left-24"
+          aria-hidden="true"
+        />
+        <div
+          className="bg-ambient-blob w-[420px] h-[420px] bg-purple-500/10 -bottom-24 -right-24"
+          aria-hidden="true"
+        />
+
+        <div
+          className={`h-full min-h-0 min-w-0 grid gap-4 sm:gap-5 relative z-10 ${
             isFocusMode ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-12"
           }`}
+          style={{ boxSizing: "border-box" }}
         >
           {/* Left Column: Fixed 4:3 Camera Card (Hidden in Focus Mode) */}
           {!isFocusMode && (
-            <div className="lg:col-span-4 h-full min-h-0 flex flex-col">
+            <div className="lg:col-span-4 h-full min-h-0 min-w-0 flex flex-col">
               <WebcamView
                 ref={webcamHandleRef}
                 sharedGazePointRef={sharedGazePointRef}
@@ -273,7 +285,8 @@ function HomeContent({
           <div
             className={`${
               isFocusMode ? "col-span-1" : "lg:col-span-8"
-            } h-full min-h-0 flex flex-col bg-[var(--bg-surface)] rounded-3xl border-2 border-[var(--border-subtle)] shadow-md overflow-hidden`}
+            } h-full min-h-0 min-w-0 flex flex-col bg-[var(--bg-surface)] rounded-[20px] border border-[var(--border-subtle)] shadow-[var(--shadow-card)] overflow-hidden`}
+            style={{ boxSizing: "border-box" }}
           >
             <AskView
               ref={askViewRef}

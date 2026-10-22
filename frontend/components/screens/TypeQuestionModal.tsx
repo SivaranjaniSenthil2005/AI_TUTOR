@@ -50,14 +50,14 @@ export function TypeQuestionModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white dark:text-slate-950 flex items-center justify-center font-black">
-              <Keyboard className="w-5 h-5 text-current" />
+            <div className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center font-bold">
+              <Keyboard className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 id="type-question-modal-title" className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
+              <h2 id="type-question-modal-title" className="text-xl font-semibold text-[var(--text-primary)]">
                 Type Your Question
               </h2>
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+              <p className="text-xs text-[var(--text-muted)]">
                 Ask anything from your Class 10 textbook
               </p>
             </div>
@@ -67,7 +67,7 @@ export function TypeQuestionModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-10 h-10 rounded-xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] hover:border-amber-500 text-[var(--text-secondary)] flex items-center justify-center cursor-pointer calm-fade"
+            className="w-10 h-10 rounded-xl bg-[var(--bg-surface-2)] border border-[var(--border-subtle)] hover:border-[var(--primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center cursor-pointer calm-fade"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,7 +83,7 @@ export function TypeQuestionModal({
               value={typedQuestion}
               onChange={(e) => setTypedQuestion(e.target.value)}
               placeholder="e.g. What is Ohm's Law and its formula?"
-              className="w-full h-16 px-5 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] focus:border-amber-500 text-[var(--text-primary)] font-bold text-lg sm:text-xl placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-4 focus:ring-amber-400/40"
+              className="w-full h-16 px-5 rounded-2xl bg-[var(--bg-surface-2)] border border-[var(--border-subtle)] focus:border-[var(--primary)] text-[var(--text-primary)] font-semibold text-lg sm:text-xl placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-3 focus:ring-[var(--focus-ring)]"
             />
           </div>
 
@@ -91,7 +91,7 @@ export function TypeQuestionModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-14 px-6 rounded-2xl bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-strong)] font-bold text-base cursor-pointer calm-fade"
+              className="h-14 px-6 rounded-2xl bg-[var(--bg-surface-2)] hover:bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] font-semibold text-base cursor-pointer calm-fade"
             >
               Cancel
             </button>
@@ -99,7 +99,7 @@ export function TypeQuestionModal({
               id="typed-question-submit-btn"
               type="submit"
               disabled={!typedQuestion.trim()}
-              className="h-14 px-8 rounded-2xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white dark:text-slate-950 font-black text-lg border-2 border-amber-400 shadow-md flex items-center gap-2 cursor-pointer calm-fade disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-14 px-8 rounded-2xl bg-brand-gradient hover:brightness-105 active:brightness-95 text-white font-semibold text-lg border-0 shadow-sm flex items-center gap-2 cursor-pointer calm-fade disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5" />
               <span>Ask Tutor</span>

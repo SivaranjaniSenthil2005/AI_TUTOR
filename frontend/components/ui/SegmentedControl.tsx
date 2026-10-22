@@ -45,10 +45,10 @@ export function SegmentedControl<T extends string>({
               e.currentTarget.focus({ preventScroll: true });
               onChange(opt.value);
             }}
-            className={`min-h-[56px] px-3 py-2 rounded-xl text-sm font-bold flex flex-col items-center justify-center text-center select-none cursor-pointer calm-fade border-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 ${
+            className={`min-h-[56px] px-3 py-2 rounded-xl text-sm font-semibold flex flex-col items-center justify-center text-center select-none cursor-pointer calm-fade border focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] ${
               isSelected
-                ? "bg-amber-500 text-white dark:text-slate-950 border-amber-400 shadow-md font-black"
-                : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-strong)] hover:border-amber-500 hover:text-[var(--text-primary)]"
+                ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm font-semibold"
+                : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:border-[var(--primary)] hover:text-[var(--text-primary)]"
             }`}
           >
             {opt.icon && <span className="mb-0.5 text-base" aria-hidden="true">{opt.icon}</span>}

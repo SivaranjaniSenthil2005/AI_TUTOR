@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS: GazeUiSettings = {
   isPaused: false,
   edgeScrollingEnabled: false,
   focusMode: false,
-  theme: "light",
+  theme: "bright",
   fontFamily: "lexend",
   textSize: "100%",
   lineSpacing: "normal",
@@ -82,23 +82,40 @@ export function GazeProvider({
 }: GazeProviderProps) {
   // Load initial settings
   const [settings, setSettings] = useState<GazeUiSettings>(() => {
+    let initial: GazeUiSettings = { ...DEFAULT_SETTINGS };
     if (typeof window !== "undefined") {
       try {
+        const legacyTheme = localStorage.getItem("ai_tutor_theme");
         const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          return { ...DEFAULT_SETTINGS, ...parsed };
+          initial = { ...initial, ...parsed };
+        }
+        if (legacyTheme && !stored) {
+          const normTheme = legacyTheme === "light" ? "bright" : legacyTheme === "calm" ? "calm-night" : legacyTheme;
+          initial.theme = normTheme as GazeUiSettings["theme"];
         }
       } catch {}
+
+      // If no explicit theme saved, detect system preference
+      if (!localStorage.getItem(SETTINGS_STORAGE_KEY) && !localStorage.getItem("ai_tutor_theme")) {
+        if (window.matchMedia && window.matchMedia("(prefers-contrast: more)").matches) {
+          initial.theme = "high-contrast";
+          initial.highContrast = true;
+        } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          initial.theme = "calm-night";
+        }
+      }
+
       // Check prefers-reduced-motion
       if (
         window.matchMedia &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches
       ) {
-        return { ...DEFAULT_SETTINGS, reducedMotion: true };
+        initial.reducedMotion = true;
       }
     }
-    return DEFAULT_SETTINGS;
+    return initial;
   });
 
   const [autoPaused, setAutoPaused] = useState<boolean>(false);
@@ -123,16 +140,19 @@ export function GazeProvider({
     if (typeof document !== "undefined") {
       const root = document.documentElement;
 
+      // Normalize theme key
+      const currentTheme = settings.theme === "light" ? "bright" : settings.theme === "calm" ? "calm-night" : settings.theme || "bright";
+
       // Theme attribute & classes
-      if (settings.highContrast || settings.theme === "high-contrast") {
+      if (settings.highContrast || currentTheme === "high-contrast") {
         root.classList.add("high-contrast");
         root.setAttribute("data-theme", "high-contrast");
-      } else if (settings.theme === "calm") {
+      } else if (currentTheme === "calm-night") {
         root.classList.remove("high-contrast");
-        root.setAttribute("data-theme", "calm");
+        root.setAttribute("data-theme", "calm-night");
       } else {
         root.classList.remove("high-contrast");
-        root.setAttribute("data-theme", "light");
+        root.setAttribute("data-theme", "bright");
       }
 
       // Font family attribute
@@ -206,6 +226,9 @@ export function GazeProvider({
       const updated = { ...prev, ...newSettings };
       try {
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+        if (updated.theme) {
+          localStorage.setItem("ai_tutor_theme", updated.theme);
+        }
       } catch {}
       return updated;
     });

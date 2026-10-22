@@ -24,7 +24,7 @@ export function ConversationArea({
   subject,
   boardName,
   subjectName,
-  isThinking,
+  isThinking: _isThinking,
   onAskQuestion,
   onSelectSuggestion,
 }: ConversationAreaProps) {
@@ -123,17 +123,17 @@ export function ConversationArea({
               if (msg.role === "student") {
                 return (
                   <div key={msg.id} className="flex justify-end">
-                    <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-[#131f38] border-2 border-amber-400/50 shadow-md">
-                      <div className="text-xs font-black uppercase tracking-wider text-amber-300 mb-1.5 flex items-center justify-between gap-4">
+                    <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-[var(--primary-soft)] border border-[var(--primary)]/30 shadow-xs">
+                      <div className="text-xs font-semibold text-[var(--primary)] mb-1.5 flex items-center justify-between gap-4">
                         <span>You</span>
-                        <span className="text-slate-400 font-normal">
+                        <span className="text-[var(--text-muted)] font-normal">
                           {new Date(msg.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
                         </span>
                       </div>
-                      <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
+                      <p className="text-xl sm:text-2xl font-semibold text-[var(--text-primary)] leading-relaxed">
                         {msg.text}
                       </p>
                     </div>
@@ -171,11 +171,11 @@ export function ConversationArea({
           id="scroll-up-btn"
           onClick={handleScrollUp}
           label="Scroll Up"
-          icon={<ChevronUp className="w-6 h-6 text-amber-300" />}
+          icon={<ChevronUp className="w-5 h-5 text-[var(--primary)]" />}
           disabled={!canScrollUp}
           variant="card"
           size="default"
-          className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+          className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-semibold text-xs gap-1"
         />
 
         <div className="flex-1" />
@@ -184,11 +184,11 @@ export function ConversationArea({
           id="scroll-down-btn"
           onClick={handleScrollDown}
           label="Scroll Down"
-          icon={<ChevronDown className="w-6 h-6 text-amber-300" />}
+          icon={<ChevronDown className="w-5 h-5 text-[var(--primary)]" />}
           disabled={!canScrollDown}
           variant="card"
           size="default"
-          className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+          className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-semibold text-xs gap-1"
         />
       </aside>
     </div>

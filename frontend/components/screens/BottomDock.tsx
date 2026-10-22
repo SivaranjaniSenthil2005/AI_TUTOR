@@ -45,90 +45,101 @@ export const BottomDock = React.memo(function BottomDock({
     <nav
       id="bottom-dock-container"
       aria-label="Primary Learning Controls"
-      className="h-28 w-full max-w-full border-t-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-3 select-none flex-shrink-0 z-20 shadow-lg flex items-center overflow-clip"
+      className="h-28 max-h-28 w-full max-w-full border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-3 select-none flex-shrink-0 z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] flex items-center overflow-hidden"
+      style={{ boxSizing: "border-box" }}
     >
-      <div className="w-full grid grid-cols-4 gap-4 items-center h-full">
-        {/* 1. Ask with Voice (Primary Action, Largest) */}
-        <div className="h-full flex items-center">
+      <div
+        className="w-full h-full grid gap-4 items-center"
+        style={{
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* 1. Ask with Voice (Primary Action: Brand Gradient, Largest Visual Weight) */}
+        <div className="h-full min-w-0 flex items-center">
           <GazeButton
             id="dock-ask-voice-btn"
             onClick={onAskWithVoice}
             label={isListening ? "Listening..." : "Ask with Voice"}
-            subtitle={isListening ? "Speak now" : "Speak your question"}
-            icon={<Mic className="w-6 h-6 sm:w-7 sm:h-7" />}
+            subtitle={isListening ? "Speak now" : "Use microphone"}
+            icon={<Mic className="w-5 h-5 text-white" />}
             variant={isListening ? "active" : "primary"}
-            size="xl"
+            size="large"
             disabled={isThinking}
-            className="w-full !h-full font-black text-slate-950 !border-amber-500 shadow-md"
+            className={`w-full !h-full font-semibold min-w-0 ${
+              isListening
+                ? "!border-[var(--primary)] ring-3 ring-[var(--focus-ring)]/50 !bg-[var(--primary-soft)]"
+                : ""
+            }`}
           />
         </div>
 
-        {/* 2. Type a Question */}
-        <div className="h-full flex items-center">
+        {/* 2. Type Question (White Card, Keyboard Icon) */}
+        <div className="h-full min-w-0 flex items-center">
           <GazeButton
             id="dock-type-question-btn"
             onClick={onTypeQuestion}
-            label="Type Question"
-            subtitle="Keyboard input"
-            icon={<Keyboard className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
+            label="Type"
+            subtitle="Use keyboard"
+            icon={<Keyboard className="w-5 h-5 text-[var(--primary)]" />}
             variant="card"
             size="large"
             disabled={isThinking}
-            className="w-full !h-full font-extrabold"
+            className="w-full !h-full font-semibold min-w-0"
           />
         </div>
 
-        {/* 3. Read Aloud (In-place Swap for Audio Playback) */}
-        <div className="h-full flex items-center">
+        {/* 3. Read Aloud (Teal-tinted, Speaker Icon; In-place Swap for Audio Controls) */}
+        <div className="h-full min-w-0 flex items-center">
           {!isSpeaking ? (
             <GazeButton
               id="dock-read-aloud-btn"
               onClick={onReadAloud}
               label="Read Aloud"
-              subtitle={hasAnswerToRead ? "Listen to tutor" : "Available on answer"}
-              icon={<Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
+              subtitle={hasAnswerToRead ? "Listen to tutor" : "When answer ready"}
+              icon={<Volume2 className="w-5 h-5 text-[var(--accent-teal)]" />}
               variant="card"
               size="large"
               disabled={!hasAnswerToRead || isThinking}
-              className="w-full !h-full font-extrabold"
+              className="w-full !h-full font-semibold min-w-0 !bg-[var(--teal-soft)]/40 hover:!bg-[var(--teal-soft)]/70 !border-[var(--accent-teal)]/30"
             />
           ) : (
-            <div className="w-full h-full grid grid-cols-2 gap-2">
+            <div className="w-full h-full grid grid-cols-2 gap-2 min-w-0">
               <GazeButton
                 id="dock-pause-resume-btn"
                 onClick={onPauseResumeAudio || onReadAloud}
                 label={isAudioPaused ? "Resume" : "Pause"}
-                icon={isAudioPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
-                variant="accent"
+                icon={isAudioPaused ? <Play className="w-4 h-4 text-[var(--accent-teal)]" /> : <Pause className="w-4 h-4 text-[var(--accent-teal)]" />}
+                variant="card"
                 size="compact"
-                className="w-full !h-full font-extrabold"
+                className="w-full !h-full font-semibold min-w-0 !bg-[var(--teal-soft)]/40 !border-[var(--accent-teal)]/30"
               />
               <GazeButton
                 id="dock-stop-audio-btn"
                 onClick={onStopAudio || onReadAloud}
                 label="Stop"
-                icon={<Square className="w-5 h-5" />}
+                icon={<Square className="w-4 h-4 text-[var(--error)]" />}
                 variant="danger"
                 size="compact"
-                className="w-full !h-full font-extrabold"
+                className="w-full !h-full font-semibold min-w-0"
               />
             </div>
           )}
         </div>
 
-        {/* 4. Explain Differently (Mode Picker) */}
-        <div className="h-full flex items-center">
+        {/* 4. Explain Again (Violet-tinted, Mode Chip, Sparkles Icon) */}
+        <div className="h-full min-w-0 flex items-center">
           <GazeButton
             id="dock-explain-mode-btn"
             onClick={onExplainDifferently}
-            label="Explain Differently"
+            label="Explain Again"
             subtitle={`Mode: ${modeLabel}`}
             tag={modeLabel}
-            icon={<Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
+            icon={<Sparkles className="w-5 h-5 text-[var(--secondary-violet)]" />}
             variant="card"
             size="large"
             disabled={isThinking}
-            className="w-full !h-full font-extrabold"
+            className="w-full !h-full font-semibold min-w-0 !bg-[var(--violet-soft)]/40 hover:!bg-[var(--violet-soft)]/70 !border-[var(--secondary-violet)]/30"
           />
         </div>
       </div>

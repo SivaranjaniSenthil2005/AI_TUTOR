@@ -24,9 +24,9 @@ export function ProgressRing({
   const strokeDashoffset = circumference - Math.max(0, Math.min(1, progress)) * circumference;
 
   const colorClass = {
-    amber: "text-amber-400",
-    teal: "text-emerald-400",
-    cyan: "text-cyan-400",
+    amber: "text-[var(--dwell-ring)]",
+    teal: "text-[var(--accent-teal)]",
+    cyan: "text-[var(--sky)]",
   }[variant];
 
   return (
@@ -59,7 +59,7 @@ export function ProgressRing({
         />
       </svg>
       {showText && (
-        <span className="absolute text-[10px] font-black text-amber-300">
+        <span className="absolute text-[10px] font-semibold text-[var(--text-primary)]">
           {Math.round(progress * 100)}%
         </span>
       )}

@@ -31,17 +31,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
 
   const variantClasses = {
     primary:
-      "bg-amber-400 text-slate-950 font-bold border-2 border-amber-300 hover:bg-amber-300 shadow-md",
+      "bg-brand-gradient text-white font-semibold border-0 hover:brightness-105 shadow-md",
     secondary:
-      "bg-[#0d1527] text-white font-semibold border-2 border-slate-700 hover:border-slate-500 hover:bg-[#131f38]",
+      "bg-[var(--bg-surface-2)] text-[var(--text-primary)] font-semibold border border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--bg-surface)]",
     accent:
-      "bg-amber-400 text-slate-950 font-black border-2 border-amber-300 hover:bg-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.25)]",
+      "bg-[var(--accent-teal)] text-white font-semibold border-0 hover:brightness-105 shadow-md",
     outline:
-      "bg-transparent text-slate-200 font-semibold border-2 border-slate-600 hover:border-amber-400 hover:bg-slate-800/40",
+      "bg-transparent text-[var(--text-primary)] font-semibold border border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/20",
     ghost:
-      "bg-transparent text-slate-300 font-semibold border-2 border-transparent hover:bg-slate-800/60 hover:text-white",
+      "bg-transparent text-[var(--text-muted)] font-semibold border-0 hover:bg-[var(--bg-surface-2)] hover:text-[var(--text-primary)]",
     danger:
-      "bg-rose-950/80 text-rose-200 font-bold border-2 border-rose-600 hover:bg-rose-900",
+      "bg-[var(--error-soft)] text-[var(--error)] font-semibold border border-[var(--error)]/30 hover:bg-[var(--error-soft)]/80",
   }[variant];
 
   return (
@@ -51,7 +51,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       onClick={(e) => {
         if (!disabled && onClick) onClick(e);
       }}
-      className={`inline-flex items-center justify-center select-none cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/80 disabled:opacity-40 disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
+      className={`inline-flex items-center justify-center select-none cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] disabled:opacity-40 disabled:cursor-not-allowed ${sizeClasses} ${variantClasses} ${className}`}
       {...props}
     >
       {icon && <span className="flex-shrink-0" aria-hidden="true">{icon}</span>}

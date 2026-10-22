@@ -59,13 +59,13 @@ export function Drawer({
         className={`w-full ${widthClass} h-full bg-[var(--bg-surface)] border-l-4 border-[var(--border-subtle)] shadow-2xl flex flex-col relative calm-fade`}
       >
         {/* Drawer Header */}
-        <div className="h-18 px-6 py-4 border-b-2 border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex items-center justify-between flex-shrink-0">
+        <div className="h-18 px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 id="drawer-title" className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">
+            <h2 id="drawer-title" className="text-xl font-semibold text-[var(--text-primary)] tracking-tight">
               {title}
             </h2>
             {subtitle && (
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 mt-0.5">
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
                 {subtitle}
               </p>
             )}
@@ -79,9 +79,9 @@ export function Drawer({
               onClose();
             }}
             aria-label="Close Drawer"
-            className="w-12 h-12 rounded-xl bg-[var(--bg-surface)] border-2 border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
+            className="w-10 h-10 rounded-xl bg-[var(--bg-surface-2)] border border-[var(--border-subtle)] hover:border-[var(--primary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center cursor-pointer calm-fade focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)]"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

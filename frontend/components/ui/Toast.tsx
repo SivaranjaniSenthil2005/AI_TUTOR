@@ -46,16 +46,16 @@ export function Toast({
       icon: <CheckCircle2 className="w-5 h-5 text-emerald-400" />,
     },
     warning: {
-      bg: "bg-[#291b05]",
-      border: "border-amber-500/60",
-      text: "text-amber-100",
-      icon: <AlertCircle className="w-5 h-5 text-amber-400" />,
+      bg: "bg-[var(--warning-soft)]",
+      border: "border-[var(--warning)]/40",
+      text: "text-[var(--text-primary)]",
+      icon: <AlertCircle className="w-5 h-5 text-[var(--warning)]" />,
     },
     error: {
-      bg: "bg-[#2c0f16]",
-      border: "border-rose-600/60",
-      text: "text-rose-100",
-      icon: <AlertCircle className="w-5 h-5 text-rose-400" />,
+      bg: "bg-[var(--error-soft)]",
+      border: "border-[var(--error)]/40",
+      text: "text-[var(--text-primary)]",
+      icon: <AlertCircle className="w-5 h-5 text-[var(--error)]" />,
     },
   }[type];
 
@@ -67,7 +67,7 @@ export function Toast({
       className="fixed bottom-32 right-6 z-[9970] max-w-md pointer-events-auto shadow-2xl rounded-2xl"
     >
       <div
-        className={`px-4 py-3.5 rounded-2xl border-2 flex items-center gap-3 ${typeConfig.bg} ${typeConfig.border} ${typeConfig.text} calm-fade`}
+        className={`px-4 py-3.5 rounded-2xl border flex items-center gap-3 ${typeConfig.bg} ${typeConfig.border} ${typeConfig.text} calm-fade`}
       >
         <span className="flex-shrink-0" aria-hidden="true">{typeConfig.icon}</span>
         <p className="text-sm font-semibold flex-1 leading-snug">{message}</p>
@@ -78,7 +78,7 @@ export function Toast({
               e.currentTarget.focus({ preventScroll: true });
               onAction();
             }}
-            className="px-3 py-1 bg-amber-400 text-slate-950 font-bold text-xs rounded-lg hover:bg-amber-300 cursor-pointer flex-shrink-0"
+            className="px-3 py-1 bg-[var(--primary)] text-white font-semibold text-xs rounded-lg hover:bg-[var(--primary-hover)] cursor-pointer flex-shrink-0"
           >
             {actionLabel}
           </button>

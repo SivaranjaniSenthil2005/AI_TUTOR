@@ -63,12 +63,12 @@ export const GazeButton = React.memo(function GazeButton({
     disabled,
   });
 
-  // Brief flash on activation without ANY movement or transform scale
+  // Brief success-green flash on activation without ANY movement or transform scale
   useEffect(() => {
     if (isActivated) {
       const timer = setTimeout(() => {
         setIsFlashActive(false);
-      }, 350);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isActivated]);
@@ -90,61 +90,58 @@ export const GazeButton = React.memo(function GazeButton({
     }
   };
 
-  // Dimensions: 88px standard, 104px for xl (primary dock action), min width 176px
+  // Standard sizes with min-w-0 for flex/grid responsiveness
   const sizeClasses = {
-    compact: "h-[64px] min-w-[150px] px-4 py-2 text-sm",
-    default: "h-[88px] min-w-[176px] px-5 py-3 text-base",
-    large: "h-[88px] min-w-[190px] px-6 py-3 text-lg",
-    xl: "h-[104px] min-w-[210px] px-6 py-4 text-xl",
+    compact: "h-9 min-h-[36px] min-w-0 px-3 py-1 text-xs",
+    default: "h-[76px] min-w-0 px-4 py-2.5 text-sm sm:text-base",
+    large: "h-[84px] min-w-0 px-5 py-3 text-base sm:text-lg",
+    xl: "h-[92px] min-w-0 px-5 py-3.5 text-base sm:text-lg",
   }[size];
 
-  // Visual variants: Show state changes via background, border color, box-shadow, rings ONLY (ZERO transforms)
+  // Visual variants using exact Bright tokens
   let variantClasses = "";
   switch (variant) {
-    case "accent":
+    case "primary":
       variantClasses =
-        "bg-amber-400 text-slate-950 border-amber-500 shadow-sm hover:bg-amber-300";
+        "bg-brand-gradient text-white border-transparent shadow-[0_4px_16px_rgba(79,70,229,0.25)] hover:brightness-105";
       break;
     case "active":
       variantClasses =
-        "bg-amber-400 text-slate-950 border-amber-500 ring-4 ring-amber-400/50 font-black shadow-md";
+        "bg-[var(--primary-soft)] text-[var(--primary)] border-[var(--primary)] ring-2 ring-[var(--primary)]/40 font-semibold shadow-xs";
+      break;
+    case "accent":
+      variantClasses =
+        "bg-[var(--teal-soft)] text-[var(--accent-teal)] border-[var(--accent-teal)]/40 hover:border-[var(--accent-teal)] shadow-xs";
       break;
     case "dock":
       variantClasses =
-        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
+        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/30 shadow-xs";
       break;
     case "danger":
       variantClasses =
-        "bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-100 dark:border-rose-600 hover:bg-rose-100 shadow-xs";
+        "bg-[var(--error-soft)] text-[var(--error)] border-[var(--error)]/30 hover:border-[var(--error)] shadow-xs";
       break;
     case "outline":
       variantClasses =
-        "bg-transparent text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)]";
+        "bg-transparent text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/20";
       break;
     case "card":
-      variantClasses =
-        "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
-      break;
-    case "primary":
-      variantClasses =
-        "bg-amber-400 text-slate-950 font-black border-amber-500 shadow-md hover:bg-amber-300";
-      break;
     case "secondary":
     default:
       variantClasses =
-        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
+        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/30 shadow-xs";
       break;
   }
 
-  // Dwell state visual feedback (ring, border highlight, glow - NO MOVEMENT)
+  // Dwell state visual feedback (ring, border highlight, green flash - NO MOVEMENT)
   const dwellStateClasses = isFlashActive
-    ? "!bg-amber-300 !text-slate-950 !border-amber-400 ring-4 ring-amber-300/80 shadow-[0_0_24px_rgba(245,158,11,0.5)]"
+    ? "!bg-[var(--success-soft)] !text-[var(--success)] !border-[var(--success)] ring-3 ring-[var(--success)]/60 shadow-[0_0_20px_rgba(21,128,61,0.25)]"
     : isDwelling
-    ? "!border-amber-500 ring-4 ring-amber-400/50 shadow-[0_0_16px_rgba(245,158,11,0.35)]"
+    ? "!border-[var(--primary)] ring-3 ring-[var(--focus-ring)]/40 !bg-[var(--primary-soft)]/30 shadow-[0_4px_16px_rgba(79,70,229,0.15)]"
     : "";
 
-  // Progress ring math
-  const radius = 20;
+  // Progress ring math around icon container
+  const radius = size === "compact" ? 11 : 16;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - progress * circumference;
 
@@ -158,39 +155,84 @@ export const GazeButton = React.memo(function GazeButton({
       onKeyDown={handleKeyDown}
       disabled={disabled}
       aria-label={ariaLabel || label || (typeof children === "string" ? children : id)}
-      className={`relative inline-flex items-center justify-between rounded-[20px] border-4 font-bold select-none cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-amber-400/90 disabled:opacity-40 disabled:cursor-not-allowed calm-fade ${sizeClasses} ${variantClasses} ${dwellStateClasses} ${className}`}
+      className={`relative inline-flex items-center justify-between rounded-[20px] border font-semibold select-none cursor-pointer focus:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed calm-fade ${sizeClasses} ${variantClasses} ${dwellStateClasses} ${className}`}
       style={{ boxSizing: "border-box" }}
     >
       {/* Bottom dwell progress bar INSIDE button box */}
       {(progressType === "bar" || progressType === "both") && progress > 0 && (
         <div
-          className="absolute bottom-0 left-0 right-0 h-2 bg-slate-200/80 dark:bg-slate-800/80 overflow-hidden rounded-b-[16px] pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/5 dark:bg-white/10 overflow-hidden rounded-b-[19px] pointer-events-none"
           aria-hidden="true"
         >
           <div
             className={`h-full calm-fade ${
-              isGrace ? "bg-amber-600 animate-gentle-pulse" : "bg-amber-500"
+              isGrace ? "bg-[var(--dwell-ring)] animate-gentle-pulse" : "bg-[var(--dwell-ring)]"
             }`}
             style={{ width: `${Math.round(progress * 100)}%` }}
           />
         </div>
       )}
 
-      {/* Main Content: Icon and Label */}
-      <div className="flex items-center gap-3.5 flex-1 text-left min-w-0 pointer-events-none">
+      {/* Main Content: Left Icon (in a soft circle) and Label */}
+      <div className={`flex items-center ${size === "compact" ? "gap-2" : "gap-3"} flex-1 text-left min-w-0 pointer-events-none`}>
         {icon && (
-          <div className="flex-shrink-0 flex items-center justify-center text-amber-600 dark:text-amber-300">
-            {icon}
+          <div
+            className={`relative flex-shrink-0 ${
+              size === "compact" ? "w-6 h-6 min-w-[24px]" : "w-9 h-9 min-w-[36px]"
+            } rounded-full flex items-center justify-center ${
+              variant === "primary"
+                ? "bg-white/20 text-white"
+                : "bg-[var(--primary-soft)] text-[var(--primary)]"
+            }`}
+          >
+            {/* Amber Dwell Ring directly wrapping the icon */}
+            {(isDwelling || isFlashActive) && progressType !== "bar" && (
+              <svg
+                className={`absolute -inset-1 ${
+                  size === "compact" ? "w-8 h-8" : "w-11 h-11"
+                } -rotate-90 pointer-events-none`}
+                viewBox={size === "compact" ? "0 0 26 26" : "0 0 38 38"}
+              >
+                <circle
+                  cx={size === "compact" ? 13 : 19}
+                  cy={size === "compact" ? 13 : 19}
+                  r={radius}
+                  fill="none"
+                  stroke="var(--dwell-ring)"
+                  strokeWidth={size === "compact" ? "2" : "3"}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  className={isGrace ? "animate-gentle-pulse" : ""}
+                />
+              </svg>
+            )}
+            <div className="relative z-10 flex items-center justify-center">
+              {icon}
+            </div>
           </div>
         )}
+
         <div className="flex-1 min-w-0">
           {label && (
-            <div className="font-black tracking-tight truncate leading-tight">
+            <div
+              className={`font-semibold tracking-normal leading-snug break-normal ${
+                size === "compact" ? "whitespace-nowrap" : ""
+              } ${variant === "primary" ? "text-white" : ""}`}
+              style={{
+                textWrap: size === "compact" ? "nowrap" : "balance",
+                fontSize: size === "compact" ? "0.8125rem" : "clamp(0.8125rem, 0.95vw, 1.0625rem)",
+              }}
+            >
               {label}
             </div>
           )}
           {subtitle && (
-            <p className="text-xs font-semibold text-[var(--text-muted)] line-clamp-1 mt-0.5 leading-snug">
+            <p
+              className={`text-xs font-normal line-clamp-1 mt-0.5 leading-tight ${
+                variant === "primary" ? "text-white/80" : "text-[var(--text-muted)]"
+              }`}
+            >
               {subtitle}
             </p>
           )}
@@ -198,63 +240,62 @@ export const GazeButton = React.memo(function GazeButton({
         </div>
       </div>
 
-      {/* Right-hand side: Tag and Progress Ring */}
-      <div className="flex items-center gap-2.5 flex-shrink-0 ml-3 pointer-events-none">
+      {/* Right-hand side: Tag, Checkmark badge for active, or Progress ring */}
+      <div className="flex items-center gap-2 flex-shrink-0 ml-2 pointer-events-none">
+        {variant === "active" && (
+          <span className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-[11px] font-bold flex items-center justify-center shadow-xs">
+            ✓
+          </span>
+        )}
         {tag && (
-          <span className="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--bg-surface-raised)] text-[var(--text-accent)] border border-[var(--border-strong)]">
+          <span className="text-[11px] font-medium tracking-normal px-2.5 py-0.5 rounded-full bg-[var(--surface-2,var(--primary-soft))] text-[var(--text-primary)] border border-[var(--border-subtle)]">
             {tag}
           </span>
         )}
 
-        {/* Circular Dwell Progress Ring */}
-        {(progressType === "ring" || progressType === "both") && (
+        {/* Circular Dwell Progress Ring if standalone ring requested and no icon */}
+        {!icon && (progressType === "ring" || progressType === "both") && (
           <div
-            className="relative w-10 h-10 flex items-center justify-center flex-shrink-0"
+            className="relative w-8 h-8 flex items-center justify-center flex-shrink-0"
             aria-hidden="true"
           >
-            <svg className="w-10 h-10 -rotate-90" viewBox="0 0 48 48">
-              {/* Background track */}
+            <svg className="w-8 h-8 -rotate-90" viewBox="0 0 38 38">
               <circle
-                cx="24"
-                cy="24"
+                cx="19"
+                cy="19"
                 r={radius}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="3.5"
-                className="opacity-20 text-slate-500"
+                strokeWidth="2.5"
+                className="opacity-15 text-[var(--text-muted)]"
               />
-              {/* Animated progress ring */}
               <circle
-                cx="24"
-                cy="24"
+                cx="19"
+                cy="19"
                 r={radius}
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
+                stroke="var(--dwell-ring)"
+                strokeWidth="3"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
                 className={`calm-fade ${
                   isDwelling || isFlashActive
                     ? isGrace
-                      ? "text-amber-500 animate-gentle-pulse"
-                      : "text-amber-400"
-                    : "text-slate-600 opacity-30"
+                      ? "animate-gentle-pulse"
+                      : ""
+                    : "opacity-0"
                 }`}
               />
             </svg>
-
-            {/* Inner Center Indicator */}
             <div className="absolute inset-0 flex items-center justify-center">
               {isFlashActive ? (
-                <span className="text-xs font-black text-slate-950">✓</span>
+                <span className="text-xs font-bold text-[var(--success)]">✓</span>
               ) : isDwelling ? (
-                <span className="text-[10px] font-black text-amber-300">
+                <span className="text-[10px] font-bold text-[var(--text-primary)]">
                   {Math.round(progress * 100)}%
                 </span>
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-slate-500/60" />
-              )}
+              ) : null}
             </div>
           </div>
         )}

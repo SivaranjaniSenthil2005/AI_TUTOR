@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Atom, Globe, BookOpen } from "lucide-react";
 import { GazeButton } from "./GazeButton";
+import { TutorMascot } from "./TutorMascot";
 import { getStarterQuestions } from "@/lib/config/starterQuestions";
 
 export interface EmptyStateProps {
@@ -21,51 +22,62 @@ export function EmptyState({
   onSelectQuestion,
 }: EmptyStateProps) {
   const starters = getStarterQuestions(board, subject);
+  const isScience = subject === "science";
+  const subjectIcon = isScience ? (
+    <Atom className="w-5 h-5 text-[var(--accent-teal)]" />
+  ) : (
+    <Globe className="w-5 h-5 text-[var(--secondary-violet)]" />
+  );
 
   return (
     <div
       id="chat-empty-state"
-      className="max-w-3xl mx-auto my-auto flex flex-col items-center text-center p-6 sm:p-10 rounded-3xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] shadow-md space-y-6"
+      className="max-w-3xl mx-auto my-auto flex flex-col items-center text-center space-y-6 select-none"
     >
-      {/* Friendly Icon */}
-      <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-400/15 border-2 border-amber-300 dark:border-amber-400/40 text-amber-700 dark:text-amber-300 flex items-center justify-center shadow-xs">
-        <Sparkles className="w-8 h-8 text-amber-600 dark:text-amber-300" />
+      {/* Friendly Greeting Banner with Soft Brand Gradient Tint & Mascot */}
+      <div className="w-full rounded-[20px] bg-gradient-to-br from-[var(--primary-soft)]/70 to-[var(--violet-soft)]/50 border border-[var(--border-subtle)] p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-[var(--shadow-card)]">
+        <div className="text-left space-y-2 flex-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-muted)] border border-[var(--border-subtle)]">
+            <BookOpen className="w-3.5 h-3.5 text-[var(--primary)]" />
+            <span>
+              {boardName || (board === "tn" ? "Tamil Nadu" : "CBSE")} • Class 10 • {subjectName || (isScience ? "Science" : "Social Science")}
+            </span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] tracking-tight">
+            Hi! What would you like to learn today?
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+            Look at any question below to ask, or choose <span className="font-semibold text-[var(--primary)]">Ask with Voice</span> in the dock to speak naturally.
+          </p>
+        </div>
+
+        {/* Original Mascot: Tutor Buddy (Idle Expression) */}
+        <div className="flex-shrink-0">
+          <TutorMascot expression="idle" size={96} />
+        </div>
       </div>
 
-      {/* Greeting and Context */}
-      <div className="space-y-1.5">
-        <h3 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">
-          Hello! What would you like to explore today?
-        </h3>
-        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 flex items-center justify-center gap-1.5">
-          <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <span>
-            {boardName || board.toUpperCase()} • Class 10 • {subjectName || subject}
-          </span>
-        </p>
-      </div>
-
-      <p className="text-sm text-[var(--text-secondary)] max-w-lg leading-relaxed">
-        Look at a question below to ask, or choose <strong className="text-amber-700 dark:text-amber-300">Ask with Voice</strong> in the dock to speak your question naturally.
-      </p>
-
-      {/* 3 Starter Questions */}
-      <div className="w-full space-y-3 pt-2">
-        <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] block text-left sm:text-center">
-          Try asking one of these:
+      {/* 3 Starter Question Cards as Soft Colored Tiles */}
+      <div className="w-full space-y-3 pt-1 text-left">
+        <span className="text-xs font-semibold tracking-normal text-[var(--text-muted)] block px-1">
+          You can start with:
         </span>
-        <div className="grid grid-cols-1 gap-3 text-left">
-          {starters.map((starter, idx) => (
+        <div className="grid grid-cols-1 gap-3">
+          {starters.slice(0, 3).map((starter, idx) => (
             <GazeButton
               key={starter.id}
               id={`starter-q-${idx}`}
               onClick={() => onSelectQuestion(starter.question)}
               label={starter.question}
               subtitle={starter.topic}
-              icon={<BookOpen className="w-5 h-5 text-amber-600 dark:text-amber-300" />}
+              icon={subjectIcon}
               variant="card"
-              size="default"
-              className="w-full !min-h-[80px]"
+              size="large"
+              className={`w-full !h-[84px] !min-h-[84px] font-semibold ${
+                isScience
+                  ? "!bg-[var(--teal-soft)]/20 hover:!bg-[var(--teal-soft)]/50 !border-[var(--accent-teal)]/20 hover:!border-[var(--accent-teal)]"
+                  : "!bg-[var(--violet-soft)]/20 hover:!bg-[var(--violet-soft)]/50 !border-[var(--secondary-violet)]/20 hover:!border-[var(--secondary-violet)]"
+              }`}
             />
           ))}
         </div>

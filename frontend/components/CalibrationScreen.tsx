@@ -298,14 +298,14 @@ export function CalibrationScreen({
       role="dialog"
       aria-modal="true"
       aria-labelledby="calibration-screen-title"
-      className={`fixed inset-0 z-[9999] bg-[#070b14] text-white flex flex-col justify-between select-none ${
+      className={`fixed inset-0 z-[9999] bg-[#0F1226] text-white flex flex-col justify-between select-none ${
         isTargetPhase ? "cursor-none" : ""
       }`}
     >
       {/* Fixed Slim Progress Bar at Very Top */}
-      <div className="w-full h-1.5 bg-slate-800 fixed top-0 left-0 right-0 z-50">
+      <div className="w-full h-1.5 bg-[#181C3A] fixed top-0 left-0 right-0 z-50">
         <div
-          className="h-full bg-amber-400 calm-fade"
+          className="h-full bg-[#F59E0B] calm-fade"
           style={{
             width: `${
               step === "calibrating"
@@ -322,9 +322,9 @@ export function CalibrationScreen({
 
       {/* Top Bar (Hidden during target tracking to avoid any distraction) */}
       {!isTargetPhase ? (
-        <div className="h-16 px-6 sm:px-10 border-b-2 border-slate-800 bg-[#0d1527] flex items-center justify-between">
+        <div className="h-16 px-6 sm:px-10 border-b border-[#2E345F] bg-[#181C3A] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 id="calibration-screen-title" className="text-xl sm:text-2xl font-black text-amber-300">
+            <h2 id="calibration-screen-title" className="text-xl sm:text-2xl font-semibold text-white">
               Eye Calibration
             </h2>
           </div>
@@ -362,7 +362,7 @@ export function CalibrationScreen({
       {/* STEP 1: INTRO SCREEN */}
       {step === "intro" && (
         <div className="max-w-2xl mx-auto my-auto text-center space-y-6 p-6">
-          <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center mx-auto text-3xl shadow-[0_0_24px_rgba(251,191,36,0.2)]">
+          <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 border-2 border-indigo-400 text-indigo-300 flex items-center justify-center mx-auto text-3xl shadow-[0_0_24px_rgba(99,102,241,0.2)]">
             🎯
           </div>
 
@@ -380,14 +380,14 @@ export function CalibrationScreen({
             <button
               id="start-calibration-btn"
               onClick={startCalibration}
-              className="h-16 px-10 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl border-2 border-amber-300 shadow-2xl cursor-pointer calm-fade"
+              className="h-14 px-8 rounded-2xl bg-white hover:bg-slate-100 text-[#0F1226] font-semibold text-lg border-2 border-white shadow-2xl cursor-pointer calm-fade"
             >
               Start Eye Setup (Space)
             </button>
             {!isFullscreen && (
               <button
                 onClick={toggleFullscreen}
-                className="h-16 px-6 rounded-2xl bg-[#0d1527] border-2 border-slate-700 hover:border-amber-400 text-slate-200 hover:text-white font-bold text-base cursor-pointer calm-fade"
+                className="h-14 px-6 rounded-2xl bg-[#181C3A] border border-[#2E345F] hover:border-white text-slate-200 hover:text-white font-semibold text-base cursor-pointer calm-fade"
               >
                 Go Fullscreen (Recommended)
               </button>
@@ -414,21 +414,17 @@ export function CalibrationScreen({
                 cy="48"
                 r="36"
                 fill="none"
-                stroke={step === "calibrating" ? "#fbbf24" : "#22d3ee"}
+                stroke="#F59E0B"
                 strokeWidth="4"
                 strokeDasharray={226}
                 strokeDashoffset={pointPhase === "settling" ? 0 : 226 * (collectProgress / 100)}
-                className="calm-fade opacity-80"
+                className="calm-fade opacity-90"
               />
             </svg>
 
-            {/* Static Solid Center Dot (Never moves) */}
-            <div
-              className={`absolute w-7 h-7 rounded-full border-2 border-white flex items-center justify-center shadow-2xl ${
-                step === "calibrating" ? "bg-amber-400 shadow-[0_0_20px_#fbbf24]" : "bg-cyan-400 shadow-[0_0_20px_#22d3ee]"
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-slate-950" />
+            {/* Static Solid White Center Dot with amber inner ring */}
+            <div className="absolute w-7 h-7 rounded-full bg-white border-2 border-white flex items-center justify-center shadow-[0_0_24px_rgba(255,255,255,0.9)]">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
             </div>
           </div>
         </div>
@@ -437,7 +433,7 @@ export function CalibrationScreen({
       {/* STEP: INTERRUPTED (Window resized or lost focus) */}
       {step === "interrupted" && (
         <div className="max-w-xl mx-auto my-auto text-center space-y-6 p-8 bg-[#0d1527] border-4 border-slate-800 rounded-3xl shadow-2xl">
-          <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center mx-auto text-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto text-2xl">
             <AlertCircle className="w-8 h-8 text-amber-400" />
           </div>
 
@@ -452,13 +448,13 @@ export function CalibrationScreen({
           <div className="flex gap-4 justify-center">
             <button
               onClick={startCalibration}
-              className="h-14 px-8 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-lg border-2 border-amber-300 cursor-pointer calm-fade"
+              className="h-14 px-8 rounded-2xl bg-brand-gradient hover:opacity-95 text-white font-semibold text-lg cursor-pointer calm-fade shadow-lg"
             >
               Restart Calibration
             </button>
             <button
               onClick={onClose}
-              className="h-14 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-base border-2 border-slate-700 cursor-pointer calm-fade"
+              className="h-14 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-base border border-slate-700 cursor-pointer calm-fade"
             >
               Cancel
             </button>
@@ -488,13 +484,13 @@ export function CalibrationScreen({
                 if (fittedMapper) onComplete(fittedMapper);
                 onClose();
               }}
-              className="h-16 px-10 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl border-2 border-amber-300 cursor-pointer calm-fade shadow-xl"
+              className="h-16 px-10 rounded-2xl bg-brand-gradient hover:opacity-95 text-white font-semibold text-xl cursor-pointer calm-fade shadow-xl"
             >
               Start Learning!
             </button>
             <button
               onClick={startCalibration}
-              className="h-16 px-6 rounded-2xl bg-[#070b14] border-2 border-slate-700 hover:border-amber-400 text-slate-200 font-bold text-base cursor-pointer calm-fade flex items-center gap-2"
+              className="h-16 px-6 rounded-2xl bg-[#070b14] border-2 border-slate-700 hover:border-indigo-400 text-slate-200 font-semibold text-base cursor-pointer calm-fade flex items-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Tune Again</span>

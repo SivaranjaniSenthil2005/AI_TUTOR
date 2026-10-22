@@ -16,11 +16,11 @@ export function Card({
   ...props
 }: CardProps) {
   const variantClasses = {
-    surface: "bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] text-[var(--text-primary)] shadow-sm",
-    raised: "bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] text-[var(--text-primary)] shadow-md",
-    outline: "bg-transparent border-2 border-[var(--border-strong)] text-[var(--text-primary)]",
+    surface: "bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-primary)] shadow-sm",
+    raised: "bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] text-[var(--text-primary)] shadow-md",
+    outline: "bg-transparent border border-[var(--border-subtle)] text-[var(--text-primary)]",
     highlight:
-      "bg-[var(--bg-surface-raised)] border-2 border-amber-500/50 text-[var(--text-primary)] shadow-sm",
+      "bg-[var(--primary-soft)]/40 border border-[var(--primary)]/40 text-[var(--text-primary)] shadow-sm",
   }[variant];
 
   const paddingClasses = {

@@ -45,6 +45,7 @@ export function useSpeechRecognition(
 
   useEffect(() => {
     const supported = provider.isSupported();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSupported(supported);
     if (!supported) {
       setState("unsupported");

@@ -31,7 +31,7 @@ export function PrivacyPanel({ isOpen, onClose }: PrivacyPanelProps) {
               >
                 Privacy & Data Security
               </h2>
-              <p className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-300">
+              <p className="text-xs sm:text-sm font-semibold text-[var(--text-muted)]">
                 AI Tutor is built with privacy-first standards for students
               </p>
             </div>

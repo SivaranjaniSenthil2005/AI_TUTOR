@@ -68,14 +68,14 @@ export function Stepper({
           onClick={handleDecrease}
           disabled={!canDecrease}
           aria-label={`Decrease ${label}`}
-          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
+          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/30 text-[var(--text-primary)] flex items-center justify-center select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)]"
         >
-          <Minus className="w-6 h-6 text-amber-700 dark:text-amber-300" />
+          <Minus className="w-6 h-6 text-[var(--primary)]" />
         </button>
 
         {/* Value Display in Center */}
-        <div className="flex-1 text-center py-2 px-4 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)]">
-          <span className="text-2xl font-black text-amber-700 dark:text-amber-300 tracking-tight">
+        <div className="flex-1 text-center py-2 px-4 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)]">
+          <span className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">
             {displayString}
           </span>
         </div>
@@ -86,9 +86,9 @@ export function Stepper({
           onClick={handleIncrease}
           disabled={!canIncrease}
           aria-label={`Increase ${label}`}
-          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
+          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]/30 text-[var(--text-primary)] flex items-center justify-center select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--focus-ring)]"
         >
-          <Plus className="w-6 h-6 text-amber-700 dark:text-amber-300" />
+          <Plus className="w-6 h-6 text-[var(--primary)]" />
         </button>
       </div>
     </div>

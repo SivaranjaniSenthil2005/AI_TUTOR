@@ -7,8 +7,8 @@ export type StatusVariant = "success" | "warning" | "danger" | "neutral";
 export interface StatusPillProps {
   id?: string;
   icon?: React.ReactNode;
-  label: string;
-  value: string;
+  label: string; // Short label <= 8 chars: "Server", "Camera", "Eyes", "Mic"
+  value: string; // Detailed tooltip & popover value
   variant?: StatusVariant;
   onClick?: () => void;
   className?: string;
@@ -24,17 +24,10 @@ export function StatusPill({
   className = "",
 }: StatusPillProps) {
   const dotColor = {
-    success: "bg-emerald-400 shadow-[0_0_8px_#34d399]",
-    warning: "bg-amber-400 shadow-[0_0_8px_#fbbf24]",
-    danger: "bg-rose-500 shadow-[0_0_8px_#f43f5e]",
-    neutral: "bg-slate-500",
-  }[variant];
-
-  const textColor = {
-    success: "text-emerald-700 dark:text-emerald-300",
-    warning: "text-amber-700 dark:text-amber-300",
-    danger: "text-rose-700 dark:text-rose-300",
-    neutral: "text-slate-700 dark:text-slate-300",
+    success: "bg-[#15803D] ring-2 ring-[#DCFCE7]",
+    warning: "bg-[#B45309] ring-2 ring-[#FEF3C7]",
+    danger: "bg-[#BE123C] ring-2 ring-[#FFE4E6]",
+    neutral: "bg-[#5A6485] ring-2 ring-[#DDE3F5]",
   }[variant];
 
   const content = (
@@ -42,14 +35,14 @@ export function StatusPill({
       id={id}
       suppressHydrationWarning
       title={`${label}: ${value}`}
-      className={`h-8 px-2 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)] text-[var(--text-primary)] flex items-center gap-1.5 select-none text-[11px] font-semibold w-[108px] min-w-[108px] max-w-[108px] flex-shrink-0 ${
-        onClick ? "cursor-pointer hover:border-amber-500" : ""
+      className={`h-8 px-2.5 rounded-full bg-[var(--bg-surface-2)] border border-[var(--border-subtle)] text-[var(--text-primary)] flex items-center gap-1.5 select-none text-xs font-medium max-w-full flex-shrink-0 ${
+        onClick ? "cursor-pointer hover:border-[var(--primary)]" : ""
       } ${className}`}
     >
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} aria-hidden="true" suppressHydrationWarning />
-      {icon && <span className="flex-shrink-0 text-[var(--text-muted)] text-sm" aria-hidden="true">{icon}</span>}
-      <span className="truncate flex-1 min-w-0 text-left">
-        <span className={textColor} suppressHydrationWarning>{value}</span>
+      {icon && <span className="flex-shrink-0 text-[var(--text-muted)]" aria-hidden="true">{icon}</span>}
+      <span className="font-semibold text-[var(--text-primary)] text-xs" suppressHydrationWarning>
+        {label}
       </span>
     </div>
   );
@@ -62,7 +55,8 @@ export function StatusPill({
           e.currentTarget.focus({ preventScroll: true });
           onClick();
         }}
-        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-xl"
+        aria-label={`${label}: ${value}`}
+        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-full"
       >
         {content}
       </button>

@@ -105,6 +105,22 @@ test.describe("Visual Regression Screenshots Suite", () => {
     await saveScreenshot(page, "05_empty_ask_1920x1080.png");
   });
 
+  test("05b. Empty Ask Screen - 1880x1140 Desktop", async ({ page }) => {
+    await page.setViewportSize({ width: 1880, height: 1140 });
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.localStorage.setItem("ai_tutor_onboarding_completed", "true");
+      window.localStorage.setItem("ai_tutor_use_mock", "1");
+      window.localStorage.setItem("ai_tutor_board", "tn");
+      window.localStorage.setItem("ai_tutor_subject", "science");
+      window.localStorage.setItem("ai_tutor_theme", "bright");
+    });
+    await page.goto("/");
+    await page.waitForSelector("#starter-q-0");
+    await page.waitForTimeout(300);
+    await saveScreenshot(page, "05b_empty_ask_1880x1140.png");
+  });
+
   test("06. Empty Ask Screen - Tablet 820x1180", async ({ page }) => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.addInitScript(() => {
