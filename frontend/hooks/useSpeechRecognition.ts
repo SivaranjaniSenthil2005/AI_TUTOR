@@ -37,14 +37,19 @@ export function useSpeechRecognition(
     [customProvider]
   );
 
-  const isSupported = useMemo(() => provider.isSupported(), [provider]);
-
-  const [state, setState] = useState<SpeechToTextState>(() =>
-    provider.isSupported() ? "idle" : "unsupported"
-  );
+  const [isSupported, setIsSupported] = useState<boolean>(true);
+  const [state, setState] = useState<SpeechToTextState>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const [interimTranscript, setInterimTranscript] = useState<string>("");
   const [error, setError] = useState<SpeechToTextError | null>(null);
+
+  useEffect(() => {
+    const supported = provider.isSupported();
+    setIsSupported(supported);
+    if (!supported) {
+      setState("unsupported");
+    }
+  }, [provider]);
 
   const onFinalResultRef = useRef(onFinalResult);
   const onStopTtsRef = useRef(onStopTts);

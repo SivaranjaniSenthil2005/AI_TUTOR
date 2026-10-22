@@ -85,22 +85,8 @@ function HomeContent({
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
   const [scope, setScope] = useState<ScopeResponse | null>(null);
   const [llmStatus, setLlmStatus] = useState<LLMStatusResponse | null>(null);
-  const [selectedBoard, setSelectedBoard] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem("ai_tutor_selected_board") || "tn";
-      } catch {}
-    }
-    return "tn";
-  });
-  const [selectedSubject, setSelectedSubject] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem("ai_tutor_selected_subject") || "science";
-      } catch {}
-    }
-    return "science";
-  });
+  const [selectedBoard, setSelectedBoard] = useState<string>("tn");
+  const [selectedSubject, setSelectedSubject] = useState<string>("science");
 
   // Dialog & Drawer States
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -109,16 +95,23 @@ function HomeContent({
   const [isBoardModalOpen, setIsBoardModalOpen] = useState<boolean>(false);
   const [isTypeQuestionOpen, setIsTypeQuestionOpen] = useState<boolean>(false);
   const [isExplainModeOpen, setIsExplainModeOpen] = useState<boolean>(false);
-  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return localStorage.getItem("ai_tutor_onboarding_completed") === "true";
-      } catch {}
-    }
-    return true;
-  });
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = useState<boolean>(true);
   const [isStabilityMonitorOpen, setIsStabilityMonitorOpen] = useState<boolean>(false);
   const [isSimGazeActive, setIsSimGazeActive] = useState<boolean>(false);
+
+  // Sync saved preferences after client mount to prevent SSR hydration mismatch
+  useEffect(() => {
+    try {
+      const b = localStorage.getItem("ai_tutor_selected_board");
+      if (b) setSelectedBoard(b);
+      const s = localStorage.getItem("ai_tutor_selected_subject");
+      if (s) setSelectedSubject(s);
+      const o = localStorage.getItem("ai_tutor_onboarding_completed");
+      if (o === "false" || o === null) {
+        setIsOnboardingCompleted(false);
+      }
+    } catch {}
+  }, []);
 
   // Ask Session State & Tutor Status
   const [askSessionState, setAskSessionState] = useState<string>("idle");

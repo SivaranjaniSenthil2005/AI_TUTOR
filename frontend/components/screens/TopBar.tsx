@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   BookOpen,
@@ -65,6 +65,11 @@ export function TopBar({
   isStabilityMonitorOpen,
 }: TopBarProps) {
   const [isDevMenuOpen, setIsDevMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const isDevToolsEnabled =
     typeof process !== "undefined" &&
@@ -114,7 +119,7 @@ export function TopBar({
               AI Tutor
             </h1>
             <div className="w-12 h-5 flex items-center flex-shrink-0">
-              {isMockMode() && (
+              {isMounted && isMockMode() && (
                 <span
                   id="demo-mode-badge"
                   className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-600/90 dark:text-white dark:border-purple-400 inline-block"

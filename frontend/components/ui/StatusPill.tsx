@@ -40,15 +40,16 @@ export function StatusPill({
   const content = (
     <div
       id={id}
+      suppressHydrationWarning
       title={`${label}: ${value}`}
       className={`h-8 px-2 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)] text-[var(--text-primary)] flex items-center gap-1.5 select-none text-[11px] font-semibold w-[108px] min-w-[108px] max-w-[108px] flex-shrink-0 ${
         onClick ? "cursor-pointer hover:border-amber-500" : ""
       } ${className}`}
     >
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} aria-hidden="true" />
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} aria-hidden="true" suppressHydrationWarning />
       {icon && <span className="flex-shrink-0 text-[var(--text-muted)] text-sm" aria-hidden="true">{icon}</span>}
       <span className="truncate flex-1 min-w-0 text-left">
-        <span className={textColor}>{value}</span>
+        <span className={textColor} suppressHydrationWarning>{value}</span>
       </span>
     </div>
   );
