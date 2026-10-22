@@ -1,8 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { GazeButton } from "@/components/gaze/GazeButton";
-import { AnswerDisplay } from "./AnswerDisplay";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import { ChevronUp, ChevronDown, Sparkles, Trash2, RotateCcw, Mic, Volume2 } from "lucide-react";
+import { GazeButton } from "@/components/ui/GazeButton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { AnswerCard } from "@/components/screens/AnswerCard";
 import {
   askMachineTransition,
   initialSessionSnapshot,
@@ -55,19 +64,36 @@ export interface AskViewProps {
   tts: UseSpeechSynthesisReturn;
   onChangeBoardSubject: () => void;
   onOpenPrivacy: () => void;
+  onSessionStateChange?: (state: AskMachineSnapshot["state"]) => void;
+  onHasAnswerToReadChange?: (hasAnswer: boolean) => void;
 }
 
-export function AskView({
-  board,
-  subject,
-  boardName,
-  subjectName,
-  learnerSettings,
-  stt,
-  tts,
-  onChangeBoardSubject,
-  onOpenPrivacy,
-}: AskViewProps) {
+export interface AskViewHandle {
+  startVoice: () => void;
+  focusTypeInput: () => void;
+  readAloudLatest: () => void;
+  reAskLatestMode: (mode: "simple" | "step_by_step" | "example" | "exam") => void;
+  executeQuestion: (question: string) => void;
+  sessionState: AskMachineSnapshot["state"];
+  hasAnswerToRead: boolean;
+}
+
+export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
+  {
+    board,
+    subject,
+    boardName,
+    subjectName,
+    learnerSettings,
+    stt,
+    tts,
+    onChangeBoardSubject,
+    onOpenPrivacy,
+    onSessionStateChange,
+    onHasAnswerToReadChange,
+  },
+  ref
+) {
   // Session State Machine
   const [session, setSession] = useState<AskMachineSnapshot>(initialSessionSnapshot);
   const [messages, setMessages] = useState<ThreadMessage[]>(() => {
@@ -78,17 +104,35 @@ export function AskView({
   });
 
   const [typedInput, setTypedInput] = useState<string>("");
-  const [isSlowAnswer, setIsSlowAnswer] = useState<boolean>(false);
   const [activeSpeakingMsgId, setActiveSpeakingMsgId] = useState<string | null>(null);
 
-  // References for aborting, memory, and slow timer
+  // Scroll Container Ref and State
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const typeInputRef = useRef<HTMLInputElement | null>(null);
+  const [canScrollUp, setCanScrollUp] = useState<boolean>(false);
+  const [canScrollDown, setCanScrollDown] = useState<boolean>(false);
+  const userScrolledUpRef = useRef<boolean>(false);
+
+  // References for aborting, memory, and timer
   const abortControllerRef = useRef<AbortController | null>(null);
-  const slowTimerRef = useRef<NodeJS.Timeout | null>(null);
   const turnsRef = useRef<Turn[]>([]);
   const activeChapterRef = useRef<number | null>(null);
   const lastQuestionRef = useRef<string>("");
 
   const capabilities = getButtonCapabilities(session.state);
+
+  // Notify parent of session state changes
+  useEffect(() => {
+    onSessionStateChange?.(session.state);
+  }, [session.state, onSessionStateChange]);
+
+  // Check if there is an answer to read
+  const latestTutorMsg = [...messages].reverse().find((m) => m.role === "tutor" && !m.isStreaming);
+  const hasAnswerToRead = Boolean(latestTutorMsg && latestTutorMsg.text);
+
+  useEffect(() => {
+    onHasAnswerToReadChange?.(hasAnswerToRead);
+  }, [hasAnswerToRead, onHasAnswerToReadChange]);
 
   // Sync TTS speaking state with session machine
   useEffect(() => {
@@ -128,21 +172,75 @@ export function AskView({
     }
   }, [messages, learnerSettings.rememberChat]);
 
-  // Mutual exclusion: stop speaking when listening starts
-  const handleStartVoice = () => {
+  // Update scroll boundaries
+  const updateScrollState = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const atTop = el.scrollTop <= 5;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+
+    setCanScrollUp(!atTop);
+    setCanScrollDown(!atBottom);
+    userScrolledUpRef.current = !atBottom;
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => updateScrollState());
+      ro.observe(el);
+    }
+
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+      if (ro) ro.disconnect();
+    };
+  }, [updateScrollState, messages]);
+
+  const handleScrollUp = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ top: -el.clientHeight * 0.8, behavior: "smooth" });
+  };
+
+  const handleScrollDown = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
+  };
+
+  // Scroll down on new message only if user is already at bottom
+  useEffect(() => {
+    if (!userScrolledUpRef.current && scrollContainerRef.current) {
+      const el = scrollContainerRef.current;
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages.length]);
+
+  // Start voice recognition
+  const handleStartVoice = useCallback(() => {
     if (session.state === "speaking") {
       tts.stop();
       setActiveSpeakingMsgId(null);
     }
     stt.start();
     setSession((prev) => askMachineTransition(prev, { type: "START_LISTENING" }));
-  };
+  }, [session.state, tts, stt]);
 
-  const handleStopListening = () => {
+  const handleStopListening = useCallback(() => {
     stt.stop();
-  };
+  }, [stt]);
 
-  const handleConfirmYes = () => {
+  const handleConfirmYes = useCallback(() => {
     const q = session.context.pendingVoiceTranscript || stt.transcript.trim();
     if (q) {
       setSession((prev) =>
@@ -151,26 +249,18 @@ export function AskView({
       stt.reset();
       executeAsk(q, true);
     }
-  };
+  }, [session.context.pendingVoiceTranscript, stt]);
 
-  const handleConfirmRetry = () => {
+  const handleConfirmRetry = useCallback(() => {
     stt.reset();
     setSession((prev) => askMachineTransition(prev, { type: "RETRY_VOICE" }));
     stt.start();
-  };
+  }, [stt]);
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = useCallback(() => {
     stt.reset();
     setSession((prev) => askMachineTransition(prev, { type: "CANCEL_VOICE" }));
-  };
-
-  const handleTypedSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!typedInput.trim() || !capabilities.canType) return;
-    const q = typedInput.trim();
-    setTypedInput("");
-    executeAsk(q, false);
-  };
+  }, [stt]);
 
   // Main Ask Execution Pipeline
   const executeAsk = useCallback(
@@ -179,25 +269,14 @@ export function AskView({
       wasVoice: boolean,
       modeOverride?: "simple" | "step_by_step" | "example" | "exam"
     ) => {
-      // 1. Mutual exclusion: stop any ongoing TTS speech
       tts.stop();
       setActiveSpeakingMsgId(null);
-
       lastQuestionRef.current = question;
 
-      // 2. Transition machine to thinking
       setSession((prev) =>
         askMachineTransition(prev, { type: "SUBMIT_QUESTION", question })
       );
 
-      // 3. Setup slow timer (8 seconds)
-      setIsSlowAnswer(false);
-      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
-      slowTimerRef.current = setTimeout(() => {
-        setIsSlowAnswer(true);
-      }, 8000);
-
-      // 4. Update messages with student bubble
       const studentMsgId = `stu-${Date.now()}`;
       const tutorMsgId = `tut-${Date.now() + 1}`;
       const mode = modeOverride || learnerSettings.mode;
@@ -220,11 +299,8 @@ export function AskView({
       };
 
       setMessages((prev) => [...prev, studentMsg, tutorPlaceholder]);
-
-      // 5. Append student turn to sliding memory
       turnsRef.current = appendTurn(turnsRef.current, { role: "student", text: question });
 
-      // 6. Build Request
       const request: AskRequest = {
         question,
         board,
@@ -233,11 +309,10 @@ export function AskView({
         mode,
         learning_mode: mode,
         learner_profile: toLearnerProfilePayload(learnerSettings),
-        history: turnsRef.current.slice(0, -1), // previous history excluding current turn
+        history: turnsRef.current.slice(0, -1),
         active_chapter_no: activeChapterRef.current,
       };
 
-      // 7. AbortController setup
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -292,11 +367,6 @@ export function AskView({
           }
         }
 
-        // Clean up slow timer
-        if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
-        setIsSlowAnswer(false);
-
-        // Finalize tutor message
         setMessages((prev) =>
           prev.map((m) =>
             m.id === tutorMsgId
@@ -315,13 +385,11 @@ export function AskView({
           )
         );
 
-        // Append tutor turn to memory
         turnsRef.current = appendTurn(turnsRef.current, {
           role: "tutor",
           text: accumulatedAnswer,
         });
 
-        // Determine auto-speak
         const autoSpeak = tts.settings.autoRead || wasVoice;
         setSession((prev) =>
           askMachineTransition(prev, { type: "FINISH_ANSWER", autoSpeak })
@@ -332,577 +400,337 @@ export function AskView({
           tts.speak(finalSpeechText);
         }
       } catch (err: unknown) {
-        if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
-        setIsSlowAnswer(false);
-
         const apiErr = err instanceof ApiError ? err : new ApiError("unknown", String(err));
         if (apiErr.type === "aborted") {
           setSession((prev) => askMachineTransition(prev, { type: "STOP_REQUEST" }));
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tutorMsgId
-                ? { ...m, isStreaming: false, text: accumulatedAnswer || "(Answer stopped)" }
-                : m
-            )
-          );
         } else {
           setSession((prev) =>
-            askMachineTransition(prev, { type: "ERROR", error: apiErr.studentMessage })
-          );
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tutorMsgId
-                ? { ...m, isStreaming: false, text: `⚠️ ${apiErr.studentMessage}` }
-                : m
-            )
+            askMachineTransition(prev, { type: "ERROR", error: apiErr.message })
           );
         }
-      } finally {
-        abortControllerRef.current = null;
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tutorMsgId
+              ? {
+                  ...m,
+                  text:
+                    accumulatedAnswer ||
+                    "I had trouble connecting to the textbook server. Please try asking again.",
+                  isStreaming: false,
+                  grounded: false,
+                }
+              : m
+          )
+        );
       }
     },
     [board, subject, learnerSettings, tts]
   );
 
-  const handleStopRequest = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+  const handleTypedSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!typedInput.trim() || !capabilities.canType) return;
+    const q = typedInput.trim();
+    setTypedInput("");
+    executeAsk(q, false);
   };
 
-  const handleRetryLast = () => {
-    if (lastQuestionRef.current) {
-      executeAsk(lastQuestionRef.current, false);
-    } else {
-      setSession((prev) => askMachineTransition(prev, { type: "RESET_TO_IDLE" }));
-    }
-  };
+  const handleSpeakTutorMessage = useCallback(
+    (msgId: string, textToSpeak: string) => {
+      if (tts.speaking) {
+        tts.stop();
+      }
+      setActiveSpeakingMsgId(msgId);
+      setSession((prev) => askMachineTransition(prev, { type: "START_SPEAKING" }));
+      tts.speak(textToSpeak);
+    },
+    [tts]
+  );
 
-  const handleNewTopic = () => {
-    turnsRef.current = [];
-    activeChapterRef.current = null;
-    tts.stop();
-    setActiveSpeakingMsgId(null);
-    setSession((prev) => askMachineTransition(prev, { type: "RESET_TO_IDLE" }));
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `sys-${Date.now()}`,
-        role: "tutor",
-        text: "Started a fresh topic! Previous chapter context cleared.",
-        timestamp: Date.now(),
-      },
-    ]);
-  };
-
-  const handleClearConversation = () => {
-    turnsRef.current = [];
-    activeChapterRef.current = null;
-    tts.stop();
-    setActiveSpeakingMsgId(null);
-    setMessages([]);
-    clearSavedChatHistory();
-    setSession((prev) => askMachineTransition(prev, { type: "RESET_TO_IDLE" }));
-  };
-
-  const handleSpeakTutorMessage = (msgId: string, speechText: string) => {
-    stt.stop();
-    setActiveSpeakingMsgId(msgId);
-    setSession((prev) => askMachineTransition(prev, { type: "START_SPEAKING" }));
-    tts.speak(speechText);
-  };
-
-  const handleStopSpeakingMessage = () => {
+  const handleStopSpeaking = useCallback(() => {
     tts.stop();
     setActiveSpeakingMsgId(null);
     setSession((prev) => askMachineTransition(prev, { type: "STOP_SPEAKING" }));
-  };
+  }, [tts]);
 
-  // Find latest tutor message for suggestions
-  const latestTutorMsg = [...messages].reverse().find((m) => m.role === "tutor" && !m.isStreaming);
-  const candidateTranscript = session.context.pendingVoiceTranscript || stt.transcript.trim();
+  const handleNewTopic = useCallback(() => {
+    activeChapterRef.current = null;
+    turnsRef.current = [];
+  }, []);
+
+  const handleClearConversation = useCallback(() => {
+    setMessages([]);
+    turnsRef.current = [];
+    activeChapterRef.current = null;
+    clearSavedChatHistory();
+  }, []);
+
+  // Expose imperative handle to parent (for BottomDock and shortcuts)
+  useImperativeHandle(
+    ref,
+    () => ({
+      startVoice: handleStartVoice,
+      focusTypeInput: () => {
+        typeInputRef.current?.focus({ preventScroll: true });
+      },
+      readAloudLatest: () => {
+        if (latestTutorMsg) {
+          handleSpeakTutorMessage(
+            latestTutorMsg.id,
+            latestTutorMsg.speechText || latestTutorMsg.text
+          );
+        }
+      },
+      reAskLatestMode: (newMode) => {
+        if (latestTutorMsg && latestTutorMsg.originalQuestion) {
+          executeAsk(latestTutorMsg.originalQuestion, false, newMode);
+        }
+      },
+      executeQuestion: (q: string) => {
+        executeAsk(q, false);
+      },
+      sessionState: session.state,
+      hasAnswerToRead,
+    }),
+    [
+      handleStartVoice,
+      latestTutorMsg,
+      handleSpeakTutorMessage,
+      executeAsk,
+      session.state,
+      hasAnswerToRead,
+    ]
+  );
 
   return (
-    <div className="space-y-6">
-      {/* 1. Active Curriculum Header & Change Button */}
-      <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-400/20 border border-amber-400 flex items-center justify-center text-xl">
-            📚
-          </div>
-          <div>
-            <h3 className="text-base font-black text-white">
-              {boardName || board.toUpperCase()} • Class 10 {subjectName || subject}
-            </h3>
-            <p className="text-xs text-amber-300 font-semibold">
-              Mode: {learnerSettings.mode.toUpperCase()} • Max {learnerSettings.max_sentences} Sentences
-            </p>
-          </div>
+    <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden relative">
+      {/* Top Header of Ask Area: Topic Context, New Topic, and Clear Chat */}
+      <div className="h-14 px-4 sm:px-6 border-b border-slate-800 bg-[#0d1527] flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-300 truncate">
+          <span>{boardName || board.toUpperCase()}</span>
+          <span>•</span>
+          <span className="text-amber-300">{subjectName || subject}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <GazeButton
-            id="change-board-subject-btn"
-            onClick={onChangeBoardSubject}
-            label="Change Board / Subject"
-            icon="🔄"
-            variant="card"
-            size="compact"
-            className="!min-h-[44px] text-xs font-bold"
-          />
-          <GazeButton
-            id="open-privacy-btn"
-            onClick={onOpenPrivacy}
-            label="Privacy"
-            icon="🛡️"
-            variant="outline"
-            size="compact"
-            className="!min-h-[44px] text-xs font-bold text-slate-300"
-          />
+          <button
+            id="new-topic-btn"
+            type="button"
+            onClick={handleNewTopic}
+            disabled={!capabilities.canClearHistory}
+            className="h-9 px-3 rounded-xl bg-[#070b14] border border-slate-700 hover:border-amber-400 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">New Topic</span>
+          </button>
+          <button
+            id="clear-conversation-btn"
+            type="button"
+            onClick={handleClearConversation}
+            disabled={!capabilities.canClearHistory || messages.length === 0}
+            className="h-9 px-3 rounded-xl bg-[#070b14] border border-slate-700 hover:border-rose-400 text-slate-400 hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clear Chat</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. Slow Answer Warning Banner (shown after 8s of thinking) */}
-      {isSlowAnswer && (session.state === "thinking" || session.state === "answering") && (
-        <div className="bg-amber-950/80 border-2 border-amber-400 rounded-2xl p-4 flex items-center justify-between gap-3 animate-pulse shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl animate-spin">⏳</span>
-            <div>
-              <p className="text-sm font-black text-amber-200">
-                Still thinking... Searching all Class 10 textbook chapters
-              </p>
-              <p className="text-xs text-amber-300/80">
-                Large textbooks can take a few extra moments. You can wait or cancel below.
-              </p>
-            </div>
-          </div>
-          <GazeButton
-            id="slow-answer-stop-btn"
-            onClick={handleStopRequest}
-            label="Stop"
-            icon="⏹️"
-            variant="danger"
-            size="compact"
-            className="!min-h-[44px] text-xs font-bold"
+      {/* Typed Question Bar (Always visible for direct typing and test reliability) */}
+      <div className="p-3 sm:p-4 border-b border-slate-800/80 bg-[#0b1120] flex-shrink-0">
+        <form
+          id="typed-question-form"
+          onSubmit={handleTypedSubmit}
+          className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto"
+        >
+          <input
+            ref={typeInputRef}
+            id="typed-question-input"
+            type="text"
+            value={typedInput}
+            disabled={!capabilities.canType}
+            onChange={(e) => setTypedInput(e.target.value)}
+            placeholder={`Ask a question (e.g. What is photosynthesis?)...`}
+            className="flex-1 h-12 bg-[#070b14] border-2 border-slate-700 focus:border-amber-400 rounded-2xl px-4 text-base text-white placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-400/30 calm-fade disabled:opacity-50"
           />
-        </div>
-      )}
+          <button
+            id="typed-question-submit-btn"
+            type="submit"
+            disabled={!typedInput.trim() || !capabilities.canType}
+            className="h-12 px-6 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-base rounded-2xl calm-fade shadow cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 flex items-center gap-1.5 flex-shrink-0"
+          >
+            <span>Ask</span>
+          </button>
+        </form>
+      </div>
 
-      {/* 3. Error Banner with Student-Friendly Retry Button */}
-      {session.state === "error" && (
-        <div className="bg-rose-950/90 border-3 border-rose-500 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">⚠️</span>
-            <div>
-              <h4 className="text-base font-black text-white">Let&apos;s try that again!</h4>
-              <p className="text-sm text-rose-200">{session.context.errorMessage}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <GazeButton
-              id="error-try-again-btn"
-              onClick={handleRetryLast}
-              label="Try Again"
-              icon="🔄"
-              variant="accent"
-              size="compact"
-              className="!min-h-[50px] !px-5 text-sm font-black"
-            />
-            <GazeButton
-              id="error-cancel-btn"
-              onClick={() => setSession((prev) => askMachineTransition(prev, { type: "RESET_TO_IDLE" }))}
-              label="Dismiss"
-              variant="outline"
-              size="compact"
-              className="!min-h-[50px] text-sm"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 4. Live Voice Listening Card */}
+      {/* Dynamic Voice Listening / Confirmation Card */}
       {session.state === "listening" && (
-        <div className="bg-gradient-to-br from-[#131f38] via-[#0d1527] to-[#131f38] border-4 border-amber-400 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center shadow-2xl animate-pulse">
-          <div className="relative w-24 h-24 rounded-full bg-amber-400/20 border-4 border-amber-400 flex items-center justify-center text-4xl mb-4 text-amber-300 shadow-[0_0_30px_#fbbf24]">
-            🎤
-            <span className="absolute -inset-2 rounded-full border-2 border-amber-400 animate-ping opacity-50" />
+        <div
+          id="voice-listening-card"
+          className="mx-4 sm:mx-6 my-3 p-4 rounded-2xl bg-amber-950/70 border-2 border-amber-400 text-center space-y-2 flex-shrink-0 calm-fade shadow-xl"
+        >
+          <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm uppercase tracking-wider">
+            <Mic className="w-5 h-5 animate-pulse" />
+            <span>I am listening... Speak now</span>
           </div>
-
-          <h3 className="text-2xl sm:text-3xl font-black text-white mb-2">
-            I&apos;m listening... Speak your question!
-          </h3>
-          <p className="text-sm font-bold text-amber-300 mb-4">
-            Speak naturally. When you finish, look at &quot;Done Speaking&quot;.
+          <p className="text-lg font-bold text-white min-h-[28px]">
+            {stt.transcript || "Say your question..."}
           </p>
-
-          <div className="w-full max-w-lg min-h-[64px] bg-[#070b14] border-2 border-slate-700 rounded-2xl p-4 mb-6 text-center">
-            {stt.interimTranscript ? (
-              <p className="text-lg font-bold text-amber-200 italic">
-                &ldquo;{stt.interimTranscript}&rdquo;
-              </p>
-            ) : (
-              <p className="text-sm text-slate-500 font-semibold">
-                Listening for your voice... (Try saying: &quot;What are Newton&apos;s laws of motion?&quot;)
-              </p>
-            )}
-          </div>
-
-          <GazeButton
-            id="stop-listening-btn"
+          <button
+            type="button"
             onClick={handleStopListening}
-            label="Done Speaking"
-            icon="⏹️"
-            variant="danger"
-            size="large"
-            className="w-full max-w-md"
-          />
+            className="px-4 py-1.5 bg-amber-400 text-slate-950 font-black text-xs rounded-xl hover:bg-amber-300 cursor-pointer"
+          >
+            Done Speaking
+          </button>
         </div>
       )}
 
-      {/* 5. Voice Confirmation Step (Phase 7 rule) */}
       {session.state === "confirming" && (
-        <div className="bg-[#0f172a] border-4 border-amber-400 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          <div className="flex items-center gap-3 pb-3 border-b-2 border-slate-700">
-            <span className="text-3xl" role="img" aria-label="Speech Question">
-              👂
-            </span>
-            <div>
-              <h3 className="text-2xl sm:text-3xl font-black text-white">
-                Did I hear you right?
-              </h3>
-              <p className="text-xs sm:text-sm font-bold text-amber-300">
-                Confirm your question before asking AI Tutor
-              </p>
-            </div>
+        <div
+          id="voice-confirmation-card"
+          className="mx-4 sm:mx-6 my-3 p-5 rounded-2xl bg-[#0d1527] border-4 border-amber-400 text-center space-y-4 flex-shrink-0 calm-fade shadow-2xl"
+        >
+          <div className="text-xs font-black uppercase tracking-wider text-amber-300">
+            Did you say:
           </div>
-
-          <div className="bg-[#070b14] border-3 border-amber-400/50 rounded-2xl p-5 text-xl sm:text-2xl font-black text-white shadow-inner">
-            &ldquo;{candidateTranscript}&rdquo;
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <p className="text-xl sm:text-2xl font-black text-white">
+            &ldquo;{session.context.pendingVoiceTranscript || stt.transcript}&rdquo;
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
             <GazeButton
-              id="confirm-ask-yes"
+              id="voice-confirm-yes-btn"
               onClick={handleConfirmYes}
               label="Yes, Ask Tutor"
-              icon="✓"
               variant="accent"
-              size="large"
-              className="!min-h-[80px]"
+              size="compact"
+              className="w-full justify-center !min-h-[56px] font-black"
             />
             <GazeButton
-              id="confirm-ask-retry"
+              id="voice-confirm-retry-btn"
               onClick={handleConfirmRetry}
               label="Try Again"
-              icon="🔄"
-              variant="card"
-              size="large"
-              className="!min-h-[80px]"
+              variant="secondary"
+              size="compact"
+              className="w-full justify-center !min-h-[56px]"
             />
             <GazeButton
-              id="confirm-ask-cancel"
+              id="voice-confirm-cancel-btn"
               onClick={handleConfirmCancel}
               label="Cancel"
-              icon="✕"
               variant="outline"
-              size="large"
-              className="!min-h-[80px]"
+              size="compact"
+              className="w-full justify-center !min-h-[56px]"
             />
           </div>
         </div>
       )}
 
-      {/* 6. Normal Input Section (Big Mic + Typed Fallback) */}
-      {session.state !== "listening" && session.state !== "confirming" && (
-        <div className="space-y-4">
-          {/* Big Mic GazeButton */}
-          <div className="flex flex-col sm:flex-row items-stretch gap-3">
-            <div className="flex-1">
-              <GazeButton
-                id="start-voice-query-btn"
-                onClick={handleStartVoice}
-                disabled={!capabilities.canListen}
-                label="Ask with Voice"
-                subtitle="Dwell here to speak your question"
-                icon="🎙️"
-                variant="accent"
-                size="large"
-                className="w-full !min-h-[80px] shadow-[0_0_20px_rgba(251,191,36,0.25)]"
-              />
-            </div>
-            {capabilities.canStopRequest && (
-              <GazeButton
-                id="stop-request-btn"
-                onClick={handleStopRequest}
-                label="Stop"
-                icon="⏹️"
-                variant="danger"
-                size="large"
-                className="!min-h-[80px] !px-8"
-              />
-            )}
-          </div>
-
-          {/* Typed Fallback Input Box */}
-          <form
-            onSubmit={handleTypedSubmit}
-            className="flex flex-col sm:flex-row items-stretch gap-3 bg-[#131f38] p-3 rounded-2xl border-2 border-slate-700"
-          >
-            <input
-              id="typed-question-input"
-              type="text"
-              value={typedInput}
-              disabled={!capabilities.canType}
-              onChange={(e) => setTypedInput(e.target.value)}
-              placeholder={`Ask a Class 10 ${subject} question (e.g. What is photosynthesis?)...`}
-              className="flex-1 bg-[#070b14] border-2 border-slate-600 focus:border-amber-400 rounded-xl px-4 py-3 text-base text-white placeholder-slate-500 focus:outline-none disabled:opacity-50"
+      {/* Main Conversation Region with Docked Large Gaze Scroll Buttons */}
+      <div className="flex-1 min-h-0 flex items-stretch gap-4 p-4 sm:p-6 overflow-hidden">
+        {/* Scrollable Message List */}
+        <div
+          ref={scrollContainerRef}
+          id="chat-scroll-container"
+          tabIndex={0}
+          aria-label="Tutor Conversation Messages"
+          className="flex-1 h-full stable-scroll-region space-y-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+        >
+          {messages.length === 0 ? (
+            <EmptyState
+              board={board}
+              subject={subject}
+              boardName={boardName}
+              subjectName={subjectName}
+              onSelectQuestion={(q) => executeAsk(q, false)}
             />
-            <button
-              id="typed-question-submit-btn"
-              type="submit"
-              disabled={!typedInput.trim() || !capabilities.canType}
-              className="px-6 py-3 bg-amber-400 hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-base rounded-xl transition-all shadow cursor-pointer"
-            >
-              Ask
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* 7. Conversation Messages Feed */}
-      <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-          <h3 className="text-base font-black text-slate-300 uppercase tracking-wider flex items-center gap-2">
-            <span>💬</span> Answers & Textbook Study
-          </h3>
-          <div className="flex items-center gap-2">
-            <GazeButton
-              id="new-topic-btn"
-              onClick={handleNewTopic}
-              disabled={!capabilities.canClearHistory}
-              label="New Topic"
-              icon="🌱"
-              variant="card"
-              size="compact"
-              className="!min-h-[40px] text-xs"
-            />
-            <GazeButton
-              id="clear-conversation-btn"
-              onClick={handleClearConversation}
-              disabled={!capabilities.canClearHistory}
-              label="Clear Chat"
-              icon="🧹"
-              variant="outline"
-              size="compact"
-              className="!min-h-[40px] text-xs text-slate-400"
-            />
-          </div>
-        </div>
-
-        {/* Empty Conversation State */}
-        {messages.length === 0 && session.state === "idle" && (
-          <div className="border-2 border-dashed border-slate-700 rounded-2xl p-8 text-center bg-[#070b14]/50 space-y-4">
-            <p className="text-base font-bold text-slate-400">
-              No questions asked yet. Speak or type above to start learning!
-            </p>
-            <div className="text-xs text-amber-300 font-semibold">
-              Or look at one of these sample questions:
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
-              {[
-                subject === "science"
-                  ? "Explain Newton's laws of motion"
-                  : "Describe the Constitution of India",
-                subject === "science"
-                  ? "What happens during photosynthesis?"
-                  : "What were the causes of the Revolt of 1857?",
-                subject === "science"
-                  ? "What is the structure of a human eye?"
-                  : "Explain the types of resources in geography",
-              ].map((sampleQ, idx) => (
-                <GazeButton
-                  key={idx}
-                  id={`sample-q-${idx}`}
-                  onClick={() => executeAsk(sampleQ, false)}
-                  label={sampleQ}
-                  variant="card"
-                  size="compact"
-                  className="!min-h-[58px] text-xs justify-center text-center"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Messages Thread */}
-        {messages.map((msg) => {
-          const isTutor = msg.role === "tutor";
-          const isSpeakingThis = activeSpeakingMsgId === msg.id && tts.speaking;
-
-          return (
-            <div
-              key={msg.id}
-              className={`rounded-2xl p-5 border-2 transition-all ${
-                isTutor
-                  ? "bg-[#0d1527] border-slate-700 shadow-md"
-                  : "bg-[#131f38] border-amber-400/40 ml-4 sm:ml-8"
-              }`}
-            >
-              {/* Header Info */}
-              <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800 text-xs font-black uppercase tracking-wider">
-                <span
-                  className={
-                    isTutor
-                      ? "text-cyan-300 flex items-center gap-1.5"
-                      : "text-amber-300 flex items-center gap-1.5"
-                  }
-                >
-                  <span>{isTutor ? "🤖 AI Tutor" : "👤 You"}</span>
-                  {isTutor && msg.provider && (
-                    <span className="text-[10px] bg-slate-800 text-cyan-300 px-2 py-0.5 rounded border border-slate-700 font-semibold">
-                      {msg.provider}
-                    </span>
-                  )}
-                </span>
-                <span className="text-slate-500 font-medium">
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-
-              {/* Message Content */}
-              {isTutor ? (
-                <div className="space-y-4">
-                  <AnswerDisplay
-                    answerText={msg.text}
-                    speechText={msg.speechText}
-                    sources={msg.sources}
-                    grounded={msg.grounded}
-                    isStreaming={msg.isStreaming}
-                    isSpeaking={isSpeakingThis}
-                    currentSpeechSentenceIdx={tts.currentSentenceIndex}
-                    mode={msg.mode}
-                  />
-
-                  {/* Read Aloud Playback Controls */}
-                  {!msg.isStreaming && msg.text && (
-                    <div className="pt-2 flex flex-wrap items-center gap-3 border-t border-slate-800">
-                      {!isSpeakingThis ? (
-                        <GazeButton
-                          id={`read-aloud-${msg.id}`}
-                          onClick={() =>
-                            handleSpeakTutorMessage(msg.id, msg.speechText || msg.text)
-                          }
-                          label="Read Aloud"
-                          icon="🔊"
-                          variant="secondary"
-                          size="compact"
-                          className="!min-h-[44px] text-xs font-bold text-amber-300"
-                        />
-                      ) : (
-                        <>
-                          <GazeButton
-                            id={`pause-read-${msg.id}`}
-                            onClick={tts.paused ? tts.resume : tts.pause}
-                            label={tts.paused ? "Resume Audio" : "Pause Audio"}
-                            icon={tts.paused ? "▶️" : "⏸️"}
-                            variant="accent"
-                            size="compact"
-                            className="!min-h-[44px] text-xs font-bold"
-                          />
-                          <GazeButton
-                            id={`stop-read-${msg.id}`}
-                            onClick={handleStopSpeakingMessage}
-                            label="Stop Audio"
-                            icon="⏹️"
-                            variant="danger"
-                            size="compact"
-                            className="!min-h-[44px] text-xs font-bold"
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Mode Buttons: Simple, Step by step, Example, Exam style */}
-                  {!msg.isStreaming && msg.originalQuestion && (
-                    <div className="pt-3 border-t border-slate-800/80 space-y-2">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
-                        Re-explain this answer in another mode:
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <GazeButton
-                          id={`re-ask-simple-${msg.id}`}
-                          onClick={() => executeAsk(msg.originalQuestion!, false, "simple")}
-                          label="Simple"
-                          variant={msg.mode === "simple" ? "active" : "card"}
-                          size="compact"
-                          className="!min-h-[48px] text-xs justify-center"
-                        />
-                        <GazeButton
-                          id={`re-ask-step-${msg.id}`}
-                          onClick={() => executeAsk(msg.originalQuestion!, false, "step_by_step")}
-                          label="Step by Step"
-                          variant={msg.mode === "step_by_step" ? "active" : "card"}
-                          size="compact"
-                          className="!min-h-[48px] text-xs justify-center"
-                        />
-                        <GazeButton
-                          id={`re-ask-example-${msg.id}`}
-                          onClick={() => executeAsk(msg.originalQuestion!, false, "example")}
-                          label="Example"
-                          variant={msg.mode === "example" ? "active" : "card"}
-                          size="compact"
-                          className="!min-h-[48px] text-xs justify-center"
-                        />
-                        <GazeButton
-                          id={`re-ask-exam-${msg.id}`}
-                          onClick={() => executeAsk(msg.originalQuestion!, false, "exam")}
-                          label="Exam Style"
-                          variant={msg.mode === "exam" ? "active" : "card"}
-                          size="compact"
-                          className="!min-h-[48px] text-xs justify-center"
-                        />
+          ) : (
+            <div className="space-y-6 max-w-4xl mx-auto">
+              {messages.map((msg) => {
+                if (msg.role === "student") {
+                  return (
+                    <div key={msg.id} className="flex justify-end">
+                      <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-[#131f38] border-2 border-amber-400/50 shadow-md">
+                        <div className="text-xs font-black uppercase tracking-wider text-amber-300 mb-1.5 flex items-center justify-between gap-4">
+                          <span>You</span>
+                          <span className="text-slate-400 font-normal">
+                            {new Date(msg.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
+                          {msg.text}
+                        </p>
                       </div>
                     </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-base sm:text-lg text-white font-semibold leading-relaxed">
-                  {msg.text}
-                </p>
-              )}
-            </div>
-          );
-        })}
+                  );
+                }
 
-        {/* 8. Follow-up Suggestions under the latest tutor message */}
-        {latestTutorMsg &&
-          latestTutorMsg.suggestedQuestions &&
-          latestTutorMsg.suggestedQuestions.length > 0 &&
-          session.state === "idle" && (
-            <div className="bg-[#131f38] border-2 border-cyan-500/40 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
-              <span className="text-xs font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
-                <span>💡</span> Suggested Follow-Up Questions (Look to Ask):
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {latestTutorMsg.suggestedQuestions.slice(0, 3).map((sug, idx) => (
-                  <GazeButton
-                    key={idx}
-                    id={`suggested-q-${idx}`}
-                    onClick={() => executeAsk(sug, false)}
-                    label={sug}
-                    variant="card"
-                    size="large"
-                    className="!min-h-[68px] text-xs leading-snug justify-center"
-                  />
-                ))}
-              </div>
+                // Tutor Answer Card
+                const isSpeakingThis = activeSpeakingMsgId === msg.id && tts.speaking;
+
+                return (
+                  <div key={msg.id}>
+                    <AnswerCard
+                      id={msg.id}
+                      answerText={msg.text}
+                      speechText={msg.speechText}
+                      sources={msg.sources}
+                      grounded={msg.grounded}
+                      isStreaming={msg.isStreaming}
+                      mode={msg.mode}
+                      originalQuestion={msg.originalQuestion}
+                      suggestedQuestions={msg.suggestedQuestions}
+                      onSelectSuggestion={(q) => executeAsk(q, false)}
+                      onReadAloud={() =>
+                        handleSpeakTutorMessage(msg.id, msg.speechText || msg.text)
+                      }
+                      onReAskMode={(m) =>
+                        executeAsk(msg.originalQuestion || msg.text, false, m)
+                      }
+                      isSpeakingThis={isSpeakingThis}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
+        </div>
+
+        {/* Docked Large Gaze Scroll Buttons beside chat area */}
+        <aside
+          aria-label="Chat Scroll Controls"
+          className="flex flex-col justify-between py-2 flex-shrink-0 w-28 sm:w-32 z-10"
+        >
+          <GazeButton
+            id="scroll-up-btn"
+            onClick={handleScrollUp}
+            label="Scroll Up"
+            icon={<ChevronUp className="w-6 h-6 text-amber-300" />}
+            disabled={!canScrollUp}
+            variant="card"
+            size="default"
+            className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+          />
+
+          <div className="flex-1" />
+
+          <GazeButton
+            id="scroll-down-btn"
+            onClick={handleScrollDown}
+            label="Scroll Down"
+            icon={<ChevronDown className="w-6 h-6 text-amber-300" />}
+            disabled={!canScrollDown}
+            variant="card"
+            size="default"
+            className="w-full !h-24 !min-h-[80px] !min-w-[110px] flex-col justify-center items-center text-center font-black text-xs gap-1"
+          />
+        </aside>
       </div>
     </div>
   );
-}
+});

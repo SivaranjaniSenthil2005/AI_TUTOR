@@ -4,17 +4,18 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { GazeFrameState, GazeFeaturesVector } from "@/hooks/useGaze";
 import { GazeMapper, type CalibrationSample } from "@/lib/calibration/mapper";
 import { type CalibrationQuality } from "@/lib/calibration/quality";
+import { Maximize2, Minimize2, X, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
 
 export interface CalibrationScreenProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (mapper: GazeMapper) => void;
-  gazeRef: React.RefObject<GazeFrameState>;
+  gazeRef: React.RefObject<GazeFrameState | null>;
   isCameraActive: boolean;
   onStartCamera?: () => void;
 }
 
-export type CalibrationStep = "intro" | "calibrating" | "validating" | "results";
+export type CalibrationStep = "intro" | "calibrating" | "validating" | "results" | "interrupted";
 
 interface TargetPoint {
   x: number; // 0..1 normalized viewport coordinate
@@ -22,7 +23,7 @@ interface TargetPoint {
   label: string;
 }
 
-// 9-point training grid (corners, edge midpoints, center)
+// 9-point training grid with safe 10% margins from screen edges
 const TRAINING_BASE_POINTS: TargetPoint[] = [
   { x: 0.1, y: 0.1, label: "Top Left" },
   { x: 0.5, y: 0.1, label: "Top Center" },
@@ -32,16 +33,16 @@ const TRAINING_BASE_POINTS: TargetPoint[] = [
   { x: 0.1, y: 0.9, label: "Bottom Left" },
   { x: 0.5, y: 0.9, label: "Bottom Center" },
   { x: 0.9, y: 0.9, label: "Bottom Right" },
-  { x: 0.5, y: 0.5, label: "Center" }, // Kept last
+  { x: 0.5, y: 0.5, label: "Center" }, // Center point last
 ];
 
 // 5 validation points (independent positions to measure true error)
 const VALIDATION_POINTS: TargetPoint[] = [
-  { x: 0.3, y: 0.3, label: "Val Upper-Left" },
-  { x: 0.7, y: 0.3, label: "Val Upper-Right" },
-  { x: 0.5, y: 0.5, label: "Val Center" },
-  { x: 0.3, y: 0.7, label: "Val Lower-Left" },
-  { x: 0.7, y: 0.7, label: "Val Lower-Right" },
+  { x: 0.3, y: 0.3, label: "Upper Left" },
+  { x: 0.7, y: 0.3, label: "Upper Right" },
+  { x: 0.5, y: 0.5, label: "Center" },
+  { x: 0.3, y: 0.7, label: "Lower Left" },
+  { x: 0.7, y: 0.7, label: "Lower Right" },
 ];
 
 function median(values: number[]): number {
@@ -51,9 +52,6 @@ function median(values: number[]): number {
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-/**
- * Computes median GazeFeaturesVector across collected samples.
- */
 function computeMedianFeatures(samples: GazeFeaturesVector[]): GazeFeaturesVector {
   return {
     irisX: median(samples.map((s) => s.irisX)),
@@ -86,6 +84,20 @@ export function CalibrationScreen({
   const validationDataRef = useRef<CalibrationSample[]>([]);
   const currentPointSamplesRef = useRef<GazeFeaturesVector[]>([]);
   const retryCountRef = useRef<number>(0);
+  const scrollPosRef = useRef<number>(0);
+
+  // Lock body scroll while open and restore on close
+  useEffect(() => {
+    if (!isOpen) return;
+    scrollPosRef.current = window.scrollY;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.scrollTo(0, scrollPosRef.current);
+    };
+  }, [isOpen]);
 
   // Fullscreen helper
   const toggleFullscreen = useCallback(async () => {
@@ -98,7 +110,7 @@ export function CalibrationScreen({
         setIsFullscreen(false);
       }
     } catch {
-      // Ignore fullscreen policy errors
+      // Ignore fullscreen policy rejections
     }
   }, []);
 
@@ -107,7 +119,6 @@ export function CalibrationScreen({
       onStartCamera();
     }
 
-    // Shuffle first 8 outer points, keep center (cc) last
     const outer = TRAINING_BASE_POINTS.slice(0, 8);
     const shuffledOuter = [...outer].sort(() => Math.random() - 0.5);
     const trainingTargets = [...shuffledOuter, TRAINING_BASE_POINTS[8]];
@@ -126,14 +137,15 @@ export function CalibrationScreen({
     setFittedMapper(null);
   }, [isCameraActive, onStartCamera]);
 
-  // Keyboard navigation (Space/Enter to start, Escape to exit)
+  // Keyboard navigation (Esc cancels, Space/Enter starts)
   useEffect(() => {
     if (!isOpen) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
-      } else if ((e.key === "Enter" || e.key === " ") && step === "intro") {
+      } else if ((e.key === "Enter" || e.key === " ") && (step === "intro" || step === "interrupted")) {
         e.preventDefault();
         startCalibration();
       }
@@ -143,16 +155,24 @@ export function CalibrationScreen({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, step, onClose, startCalibration]);
 
-  // Listen to fullscreen changes cleanly
+  // Monitor window resize or blur mid-calibration to avoid corrupted coordinate models
   useEffect(() => {
-    function onFullscreenChange() {
-      setIsFullscreen(!!document.fullscreenElement);
-    }
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
+    if (!isOpen || (step !== "calibrating" && step !== "validating")) return;
 
-  // Calibration point sequencer loop
+    const handleInterruption = () => {
+      setStep("interrupted");
+    };
+
+    window.addEventListener("resize", handleInterruption);
+    window.addEventListener("blur", handleInterruption);
+
+    return () => {
+      window.removeEventListener("resize", handleInterruption);
+      window.removeEventListener("blur", handleInterruption);
+    };
+  }, [isOpen, step]);
+
+  // Sequencer loop for calibration targets
   useEffect(() => {
     if (!isOpen || (step !== "calibrating" && step !== "validating")) {
       return;
@@ -164,16 +184,16 @@ export function CalibrationScreen({
     const currentTarget = targets[pointIndex];
     if (!currentTarget) return;
 
-    // Phase 1: Settle phase (~850ms) to ensure eyes have fully landed and fixated on dot
+    // Settle phase (~800ms)
     currentPointSamplesRef.current = [];
 
     const timerId = setTimeout(() => {
       if (!isMounted) return;
 
-      // Phase 2: Collect phase (~35 good samples at ~30Hz)
+      // Collect phase (~30 samples)
       setPointPhase("collecting");
       let sampleCount = 0;
-      const targetSampleTotal = 35;
+      const targetSampleTotal = 32;
 
       collectInterval = setInterval(() => {
         if (!isMounted) return;
@@ -195,7 +215,6 @@ export function CalibrationScreen({
 
           const collected = currentPointSamplesRef.current;
           if (collected.length < 15 && retryCountRef.current === 0) {
-            // Retry point once if too few clean samples collected
             retryCountRef.current = 1;
             setPointPhase("settling");
             setCollectProgress(0);
@@ -203,8 +222,7 @@ export function CalibrationScreen({
           }
 
           retryCountRef.current = 0;
-          // Discard initial saccade transition frames (first 5 samples) to get pure steady-state fixation
-          const steadySamples = collected.length > 10 ? collected.slice(5) : collected;
+          const steadySamples = collected.length > 8 ? collected.slice(4) : collected;
           const medianFeat = computeMedianFeatures(
             steadySamples.length > 0
               ? steadySamples
@@ -222,7 +240,6 @@ export function CalibrationScreen({
               setCollectProgress(0);
               setPointIndex((prev) => prev + 1);
             } else {
-              // Transition to 5-point validation
               setTargets(VALIDATION_POINTS);
               setPointPhase("settling");
               setCollectProgress(0);
@@ -254,60 +271,98 @@ export function CalibrationScreen({
                 setFittedMapper(mapper);
                 setQualityResult(mapper.quality);
                 setStep("results");
-              } catch (err) {
-                console.error("AI Tutor: Error during calibration fit:", err);
-                setStep("results");
+              } catch {
+                setStep("interrupted");
               }
             }
           }
         }
       }, 33);
-    }, 700);
+    }, 800);
 
     return () => {
       isMounted = false;
       clearTimeout(timerId);
       if (collectInterval) clearInterval(collectInterval);
     };
-  }, [isOpen, step, pointIndex, targets, gazeRef]);
+  }, [isOpen, step, targets, pointIndex, gazeRef]);
 
   if (!isOpen) return null;
 
   const currentTarget = targets[pointIndex] || { x: 0.5, y: 0.5, label: "Center" };
+  const isTargetPhase = step === "calibrating" || step === "validating";
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#070b14]/95 backdrop-blur-xl text-white flex flex-col justify-between p-6 sm:p-10 select-none">
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black flex items-center justify-center text-lg">
-            AI
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black text-amber-300">
-            Eye Calibration Wizard
-          </h2>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleFullscreen}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-sm border border-slate-700 cursor-pointer"
-          >
-            {isFullscreen ? "Exit Fullscreen" : "⛶ Fullscreen"}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-200 font-bold rounded-xl text-sm border border-rose-700 cursor-pointer"
-          >
-            ✕ Cancel
-          </button>
-        </div>
+    <div
+      id="calibration-screen-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="calibration-screen-title"
+      className={`fixed inset-0 z-[9999] bg-[#070b14] text-white flex flex-col justify-between select-none ${
+        isTargetPhase ? "cursor-none" : ""
+      }`}
+    >
+      {/* Fixed Slim Progress Bar at Very Top */}
+      <div className="w-full h-1.5 bg-slate-800 fixed top-0 left-0 right-0 z-50">
+        <div
+          className="h-full bg-amber-400 calm-fade"
+          style={{
+            width: `${
+              step === "calibrating"
+                ? Math.round(((pointIndex + (collectProgress / 100)) / 9) * 65)
+                : step === "validating"
+                ? 65 + Math.round(((pointIndex + (collectProgress / 100)) / 5) * 35)
+                : step === "results"
+                ? 100
+                : 0
+            }%`,
+          }}
+        />
       </div>
 
-      {/* STEP 1: INTRO */}
+      {/* Top Bar (Hidden during target tracking to avoid any distraction) */}
+      {!isTargetPhase ? (
+        <div className="h-16 px-6 sm:px-10 border-b-2 border-slate-800 bg-[#0d1527] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 id="calibration-screen-title" className="text-xl sm:text-2xl font-black text-amber-300">
+              Eye Calibration
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleFullscreen}
+              className="h-10 px-4 rounded-xl bg-[#070b14] border-2 border-slate-700 hover:border-amber-400 text-slate-200 hover:text-white font-bold text-xs flex items-center gap-2 cursor-pointer calm-fade"
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              <span>{isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}</span>
+            </button>
+            <button
+              id="calibration-cancel-btn"
+              onClick={onClose}
+              className="h-10 px-4 rounded-xl bg-rose-950/80 border-2 border-rose-700 hover:bg-rose-900 text-rose-200 font-bold text-xs flex items-center gap-2 cursor-pointer calm-fade"
+            >
+              <X className="w-4 h-4" />
+              <span>Cancel (Esc)</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Reserved Fixed Status Spot during target tracking: "3 of 9" text */
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2 rounded-full bg-[#0d1527]/90 border border-slate-700 shadow-xl flex items-center gap-3">
+          <span className="text-sm font-black text-amber-300">
+            {step === "calibrating" ? `Point ${pointIndex + 1} of 9` : `Validation ${pointIndex + 1} of 5`}
+          </span>
+          <span className="text-xs text-slate-400">
+            {pointPhase === "settling" ? "Look at center" : `${collectProgress}%`}
+          </span>
+        </div>
+      )}
+
+      {/* STEP 1: INTRO SCREEN */}
       {step === "intro" && (
-        <div className="max-w-2xl mx-auto my-auto text-center space-y-6">
-          <div className="w-24 h-24 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-5xl flex items-center justify-center mx-auto mb-2 text-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.2)]">
+        <div className="max-w-2xl mx-auto my-auto text-center space-y-6 p-6">
+          <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center mx-auto text-3xl shadow-[0_0_24px_rgba(251,191,36,0.2)]">
             🎯
           </div>
 
@@ -315,71 +370,63 @@ export function CalibrationScreen({
             Let&apos;s Set Up Your Eyes
           </h3>
 
-          <p className="text-lg sm:text-xl text-slate-200 leading-relaxed">
-            Follow each glowing dot on the screen with your eyes.
+          <p className="text-lg text-slate-200 leading-relaxed max-w-lg mx-auto">
+            Look directly at each glowing dot as it appears on your screen.
             <br />
-            <strong className="text-amber-300">Keep your head fairly still</strong> while looking at the center of each dot.
+            <strong className="text-amber-300">Keep your head comfortable and still</strong> while following each dot.
           </p>
 
-          {!isCameraActive && (
-            <div className="p-4 bg-amber-950/80 border-2 border-amber-500/80 rounded-2xl text-amber-200 font-bold text-base flex items-center justify-center gap-3">
-              <span>⚠️</span>
-              <span>Your camera is currently off. Starting calibration will turn it on.</span>
-            </div>
-          )}
-
-          <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="pt-4 flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
+              id="start-calibration-btn"
               onClick={startCalibration}
-              className="min-h-[64px] px-10 py-4 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-2xl rounded-2xl shadow-2xl border-2 border-amber-300 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="h-16 px-10 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl border-2 border-amber-300 shadow-2xl cursor-pointer calm-fade"
             >
-              Start Calibration (Space)
+              Start Eye Setup (Space)
             </button>
+            {!isFullscreen && (
+              <button
+                onClick={toggleFullscreen}
+                className="h-16 px-6 rounded-2xl bg-[#0d1527] border-2 border-slate-700 hover:border-amber-400 text-slate-200 hover:text-white font-bold text-base cursor-pointer calm-fade"
+              >
+                Go Fullscreen (Recommended)
+              </button>
+            )}
           </div>
-
-          <p className="text-xs text-slate-400">
-            Tip: Pressing Fullscreen beforehand improves accuracy.
-          </p>
         </div>
       )}
 
-      {/* STEP 2 & 3: CALIBRATING & VALIDATING (AUTOMATIC TARGET POINT) */}
-      {(step === "calibrating" || step === "validating") && (
-        <div className="relative flex-1 w-full h-full">
-          {/* Status Overlay at top */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#0d1527]/90 border border-slate-700 px-6 py-2.5 rounded-full text-center shadow-lg">
-            <span className="text-sm font-bold text-amber-300">
-              {step === "calibrating"
-                ? `Training Point ${pointIndex + 1} of 9`
-                : `Validation Target ${pointIndex + 1} of 5`}
-            </span>
-            <span className="text-xs text-slate-400 ml-2">
-              ({pointPhase === "settling" ? "Settle eyes..." : `Recording: ${collectProgress}%`})
-            </span>
-          </div>
-
-          {/* Dynamic Calibration Dot with Shrinking Ring */}
+      {/* STEP 2 & 3: TARGET TRACKING (Rock-Solid Fixed Coordinate with Shrinking Ring) */}
+      {isTargetPhase && (
+        <div className="fixed inset-0 w-full h-full pointer-events-none">
+          {/* Static Center Point with Shrinking Ring Around It - NO translation animation */}
           <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 flex items-center justify-center pointer-events-none"
+            className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
             style={{
               left: `${currentTarget.x * 100}%`,
               top: `${currentTarget.y * 100}%`,
             }}
           >
-            {/* Animated Shrinking Ring */}
-            <div
-              className={`w-20 h-20 rounded-full border-4 ${
-                step === "calibrating" ? "border-amber-400" : "border-cyan-400"
-              } animate-ping opacity-60`}
-            />
+            {/* Outer Shrinking Ring (SVG shrinking radius, dot center stays strictly static) */}
+            <svg className="w-24 h-24 -rotate-90 pointer-events-none" viewBox="0 0 96 96">
+              <circle
+                cx="48"
+                cy="48"
+                r="36"
+                fill="none"
+                stroke={step === "calibrating" ? "#fbbf24" : "#22d3ee"}
+                strokeWidth="4"
+                strokeDasharray={226}
+                strokeDashoffset={pointPhase === "settling" ? 0 : 226 * (collectProgress / 100)}
+                className="calm-fade opacity-80"
+              />
+            </svg>
 
-            {/* Solid Center Dot */}
+            {/* Static Solid Center Dot (Never moves) */}
             <div
-              className={`absolute w-8 h-8 rounded-full ${
-                step === "calibrating"
-                  ? "bg-amber-400 shadow-[0_0_20px_#fbbf24]"
-                  : "bg-cyan-400 shadow-[0_0_20px_#22d3ee]"
-              } border-2 border-white flex items-center justify-center`}
+              className={`absolute w-7 h-7 rounded-full border-2 border-white flex items-center justify-center shadow-2xl ${
+                step === "calibrating" ? "bg-amber-400 shadow-[0_0_20px_#fbbf24]" : "bg-cyan-400 shadow-[0_0_20px_#22d3ee]"
+              }`}
             >
               <div className="w-2 h-2 rounded-full bg-slate-950" />
             </div>
@@ -387,120 +434,77 @@ export function CalibrationScreen({
         </div>
       )}
 
-      {/* STEP 4: RESULTS SCREEN */}
-      {step === "results" && qualityResult && (
-        <div className="max-w-2xl mx-auto my-auto text-center space-y-6 bg-[#0d1527] border-4 border-slate-800 p-8 rounded-3xl shadow-2xl">
-          {/* Grade Badge */}
-          <div className="flex flex-col items-center">
-            <span className="text-6xl mb-2">
-              {qualityResult.grade === "good" ? "✨" : qualityResult.grade === "okay" ? "👍" : "⚠️"}
-            </span>
-            <h3
-              className={`text-3xl sm:text-4xl font-black ${
-                qualityResult.grade === "good"
-                  ? "text-emerald-400"
-                  : qualityResult.grade === "okay"
-                  ? "text-amber-300"
-                  : "text-rose-400"
-              }`}
-            >
-              {qualityResult.grade === "good"
-                ? "Excellent Eye Calibration!"
-                : qualityResult.grade === "okay"
-                ? "Good Calibration"
-                : "Calibration Needs Tuning"}
-            </h3>
-            <p className="text-lg text-slate-300 mt-2">
-              Average Accuracy Error:{" "}
-              <strong className="text-white">
-                {qualityResult.meanErrorPercent}% of screen (~{qualityResult.meanErrorPx}px)
-              </strong>
-            </p>
+      {/* STEP: INTERRUPTED (Window resized or lost focus) */}
+      {step === "interrupted" && (
+        <div className="max-w-xl mx-auto my-auto text-center space-y-6 p-8 bg-[#0d1527] border-4 border-slate-800 rounded-3xl shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center mx-auto text-2xl">
+            <AlertCircle className="w-8 h-8 text-amber-400" />
           </div>
 
-          {/* Validation Scatter Map Preview */}
-          <div className="p-4 bg-[#070b14] rounded-2xl border border-slate-700">
-            <h4 className="text-xs font-bold text-slate-400 mb-2 uppercase">
-              Validation Accuracy Map
-            </h4>
-            <div className="relative w-full h-36 bg-[#090e1a] rounded-xl border border-slate-800 overflow-hidden">
-              {qualityResult.pointResults.map((res, i) => (
-                <React.Fragment key={i}>
-                  {/* True target point (Cyan) */}
-                  <div
-                    className="absolute w-3 h-3 rounded-full bg-cyan-400 -translate-x-1/2 -translate-y-1/2 shadow"
-                    style={{ left: `${res.target.x * 100}%`, top: `${res.target.y * 100}%` }}
-                    title="Target Point"
-                  />
-                  {/* Predicted point (Amber) */}
-                  <div
-                    className="absolute w-3 h-3 rounded-full bg-amber-400 -translate-x-1/2 -translate-y-1/2 border border-slate-900"
-                    style={{ left: `${res.predicted.x * 100}%`, top: `${res.predicted.y * 100}%` }}
-                    title="Predicted Point"
-                  />
-                  {/* Error line */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                    <line
-                      x1={`${res.target.x * 100}%`}
-                      y1={`${res.target.y * 100}%`}
-                      x2={`${res.predicted.x * 100}%`}
-                      y2={`${res.predicted.y * 100}%`}
-                      stroke="#f59e0b"
-                      strokeWidth="1.5"
-                      strokeDasharray="2,2"
-                    />
-                  </svg>
-                </React.Fragment>
-              ))}
-            </div>
-            <div className="flex justify-center gap-6 mt-2 text-xs font-semibold text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" /> True Target
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> Eye Prediction
-              </span>
-            </div>
-          </div>
+          <h3 className="text-2xl sm:text-3xl font-black text-white">
+            Calibration Paused
+          </h3>
 
-          {/* Friendly Guidance Tips if poor */}
-          {qualityResult.grade === "poor" && (
-            <div className="p-4 bg-slate-900 rounded-2xl border border-slate-700 text-left text-sm space-y-1.5 text-slate-300">
-              <p className="font-bold text-amber-300 mb-1">💡 Tips for better accuracy:</p>
-              <p>• Ensure good front lighting on your face without bright backlighting.</p>
-              <p>• Sit about an arm&apos;s length (~50cm) away with camera near eye level.</p>
-              <p>• Keep your head still and follow each dot with your eyes only.</p>
-              <p>• Try fullscreen mode (⛶) before calibrating.</p>
-            </div>
-          )}
+          <p className="text-base text-slate-300 leading-relaxed">
+            The window changed size or switched focus. Restarting will make sure your eye tracking remains super accurate.
+          </p>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
-            {fittedMapper && (
-              <button
-                onClick={() => {
-                  onComplete(fittedMapper);
-                  onClose();
-                }}
-                className="px-8 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl rounded-xl shadow-lg transition-all cursor-pointer"
-              >
-                Use This Calibration
-              </button>
-            )}
+          <div className="flex gap-4 justify-center">
             <button
               onClick={startCalibration}
-              className="px-6 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg rounded-xl border border-slate-600 transition-all cursor-pointer"
+              className="h-14 px-8 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-lg border-2 border-amber-300 cursor-pointer calm-fade"
             >
-              Recalibrate
+              Restart Calibration
+            </button>
+            <button
+              onClick={onClose}
+              className="h-14 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-base border-2 border-slate-700 cursor-pointer calm-fade"
+            >
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Footer Info */}
-      <div className="text-center text-xs text-slate-400">
-        AI Tutor Gaze Calibration • 100% Client-Side Privacy • No Video Transmitted
-      </div>
+      {/* STEP 4: RESULTS SCREEN */}
+      {step === "results" && qualityResult && (
+        <div className="max-w-2xl mx-auto my-auto text-center space-y-6 bg-[#0d1527] border-4 border-slate-800 p-8 rounded-3xl shadow-2xl">
+          <div className="w-20 h-20 rounded-full bg-emerald-400/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-10 h-10" />
+          </div>
+
+          <h3 className="text-3xl font-black text-emerald-300">
+            Eyes Ready!
+          </h3>
+
+          <p className="text-base text-slate-200">
+            Eye tracking has been tuned to your screen. You can now select buttons by looking at them!
+          </p>
+
+          <div className="pt-4 flex gap-4 justify-center">
+            <button
+              id="calibration-done-btn"
+              onClick={() => {
+                if (fittedMapper) onComplete(fittedMapper);
+                onClose();
+              }}
+              className="h-16 px-10 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl border-2 border-amber-300 cursor-pointer calm-fade shadow-xl"
+            >
+              Start Learning!
+            </button>
+            <button
+              onClick={startCalibration}
+              className="h-16 px-6 rounded-2xl bg-[#070b14] border-2 border-slate-700 hover:border-amber-400 text-slate-200 font-bold text-base cursor-pointer calm-fade flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Tune Again</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom spacer for layout balance */}
+      <div className="h-4" />
     </div>
   );
 }

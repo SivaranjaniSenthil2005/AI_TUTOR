@@ -1,29 +1,40 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Lexend, Atkinson_Hyperlegible } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const lexend = Lexend({
+  variable: "--font-lexend",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const atkinson = Atkinson_Hyperlegible({
+  variable: "--font-atkinson",
+  weight: ["400", "700"],
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "AI Tutor - Accessible Learning for Neurodiverse Students",
-  description: "Accessible AI tutor for neurodiverse school students (Std 6-12), controlled by gaze and voice, with textbook RAG.",
+  description:
+    "Accessible AI tutor for neurodiverse school students (Std 6-12), controlled by gaze and voice, with textbook RAG.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${lexend.variable} ${atkinson.variable} h-full antialiased`}
+      data-font="lexend"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-full overflow-hidden select-none bg-[#070b14] text-[#f8fafc]">
+        {children}
+      </body>
     </html>
   );
 }

@@ -41,19 +41,34 @@ export function computeDistance(x1: number, y1: number, x2: number, y2: number):
 
 /**
  * Manages caching and invalidation of bounding client rects.
- * Prevents forced reflow / layout thrashing on every frame (60-120fps).
+ * Freezes the rect cache for targets currently being dwelled upon so targets never move or shift during gaze.
  */
 export class RectCache {
   private cache: Map<string, { rect: SimpleRect; timestamp: number }> = new Map();
   private maxAgeMs: number;
+  private frozenTargetId: string | null = null;
 
   constructor(maxAgeMs: number = 100) {
     this.maxAgeMs = maxAgeMs;
   }
 
+  public freezeTarget(id: string): void {
+    this.frozenTargetId = id;
+  }
+
+  public unfreezeTarget(id?: string): void {
+    if (!id || this.frozenTargetId === id) {
+      this.frozenTargetId = null;
+    }
+  }
+
+  public isFrozen(id: string): boolean {
+    return this.frozenTargetId === id;
+  }
+
   public getRect(target: GazeTarget, now: number = performance.now()): SimpleRect | null {
     const cached = this.cache.get(target.id);
-    if (cached && now - cached.timestamp < this.maxAgeMs) {
+    if (cached && (this.frozenTargetId === target.id || now - cached.timestamp < this.maxAgeMs)) {
       return cached.rect;
     }
 
@@ -86,15 +101,26 @@ export class RectCache {
 
   public invalidate(id?: string): void {
     if (id) {
-      this.cache.delete(id);
+      if (this.frozenTargetId !== id) {
+        this.cache.delete(id);
+      }
     } else {
-      this.cache.clear();
+      if (this.frozenTargetId) {
+        const frozen = this.cache.get(this.frozenTargetId);
+        this.cache.clear();
+        if (frozen) {
+          this.cache.set(this.frozenTargetId, frozen);
+        }
+      } else {
+        this.cache.clear();
+      }
     }
   }
 }
 
 /**
  * Performs hit testing against all registered gaze targets.
+ * Clamps neighbor padding so padded hit regions never collide or cause target hopping.
  */
 export function performHitTest({
   gazePoint,

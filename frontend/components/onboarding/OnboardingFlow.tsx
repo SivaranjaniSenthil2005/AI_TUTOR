@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { GazeButton } from "@/components/gaze/GazeButton";
+import {
+  Sparkles,
+  Camera,
+  Target,
+  BookOpen,
+  CheckCircle2,
+  MousePointer,
+  ArrowRight,
+  Shield,
+} from "lucide-react";
+import { GazeButton } from "@/components/ui/GazeButton";
 import { getScope, FALLBACK_SCOPE } from "@/lib/api/client";
 import type { ScopeResponse } from "@/lib/api/types";
 
@@ -22,6 +32,8 @@ export interface OnboardingFlowProps {
 
 type OnboardingStep = "welcome" | "camera" | "calibrate" | "board" | "subject" | "ready";
 
+const STEP_ORDER: OnboardingStep[] = ["welcome", "camera", "calibrate", "board", "subject", "ready"];
+
 export function OnboardingFlow({
   onComplete,
   isCameraActive,
@@ -40,14 +52,6 @@ export function OnboardingFlow({
     getScope().then((data) => {
       if (active && data) {
         setScope(data);
-        const boards = Object.keys(data.supported_boards);
-        if (boards.length > 0) {
-          setSelectedBoard((prev) => (boards.includes(prev) ? prev : boards[0]));
-        }
-        const subjects = Object.keys(data.supported_subjects);
-        if (subjects.length > 0) {
-          setSelectedSubject((prev) => (subjects.includes(prev) ? prev : subjects[0]));
-        }
       }
     });
     return () => {
@@ -55,19 +59,7 @@ export function OnboardingFlow({
     };
   }, []);
 
-  const handleStartCameraAndCalibrate = () => {
-    setUseEyeControl(true);
-    if (!isCameraActive) {
-      onStartCamera();
-    }
-    onOpenCalibration();
-    setStep("calibrate");
-  };
-
-  const handleSkipEyeControl = () => {
-    setUseEyeControl(false);
-    setStep("board");
-  };
+  const currentStepIdx = STEP_ORDER.indexOf(step);
 
   const handleFinishOnboarding = () => {
     try {
@@ -86,117 +78,152 @@ export function OnboardingFlow({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#070b14]/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      <div className="bg-[#0b1120] border-4 border-amber-400 rounded-3xl p-6 sm:p-10 max-w-3xl w-full shadow-2xl flex flex-col items-center text-center space-y-6 my-auto">
-        {/* Header Indicator */}
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-300">
-          <span>AI Tutor Onboarding</span>
-          <span>•</span>
-          <span>Class 10 English Medium</span>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-step-title"
+      className="fixed inset-0 z-50 bg-[#070b14]/95 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto select-none"
+    >
+      <div className="w-full max-w-2xl bg-[#0b1120] border-4 border-amber-400 rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col items-center text-center space-y-6 my-auto calm-fade">
+        {/* Progress Stepper Bar */}
+        <div className="w-full space-y-2">
+          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-amber-300">
+            <span>Welcome to AI Tutor</span>
+            <span>Step {currentStepIdx + 1} of {STEP_ORDER.length}</span>
+          </div>
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-400 calm-fade"
+              style={{ width: `${((currentStepIdx + 1) / STEP_ORDER.length) * 100}%` }}
+            />
+          </div>
         </div>
 
         {/* 1. Welcome Step */}
         {step === "welcome" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-[0_0_25px_rgba(251,191,36,0.4)]">
+            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center text-4xl shadow-[0_0_24px_rgba(251,191,36,0.2)]">
               👋
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              Welcome to AI Tutor!
-            </h2>
-            <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed">
-              Your accessible, textbook-grounded learning partner for Standard 10 Science and Social Science. You can ask questions with your voice, type them, and control everything using your eyes or mouse!
-            </p>
-            <div className="w-full max-w-md pt-4">
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                Welcome to AI Tutor!
+              </h2>
+              <p className="text-base sm:text-lg text-slate-300 max-w-lg leading-relaxed">
+                Your accessible textbook companion for Class 10. You can control everything with your <strong className="text-amber-300">eyes</strong> or <strong className="text-amber-300">voice</strong>.
+              </p>
+            </div>
+
+            <div className="pt-2 w-full max-w-sm">
               <GazeButton
                 id="onboarding-welcome-next"
                 onClick={() => setStep("camera")}
-                label="Let's Get Started"
-                icon="🚀"
-                variant="accent"
+                label="Get Started"
+                icon={<ArrowRight className="w-6 h-6 text-slate-950" />}
+                variant="primary"
                 size="large"
-                className="w-full !min-h-[72px] text-lg font-black"
+                className="w-full justify-center !min-h-[84px] text-lg font-black"
               />
             </div>
           </div>
         )}
 
-        {/* 2. Camera & Eye Control Step */}
+        {/* 2. Camera Setup Step */}
         {step === "camera" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-20 h-20 rounded-3xl bg-cyan-400/20 border-2 border-cyan-400 flex items-center justify-center text-4xl shadow-[0_0_25px_rgba(34,211,238,0.4)]">
-              👀
+            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center">
+              <Camera className="w-10 h-10 text-amber-300" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-              Eye-Tracking & Camera Setup
-            </h2>
-            <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-5 text-left max-w-xl space-y-3">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                <span>🔒</span> Privacy First
-              </div>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Your webcam video stays <strong>100% inside this browser</strong>. No video or camera images are ever recorded or transmitted to any server. MediaPipe processes your gaze entirely on your device.
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl font-black text-white tracking-tight">
+                Eye-Tracking & Camera Setup
+              </h2>
+              <p className="text-base text-slate-300 max-w-lg leading-relaxed">
+                We use your webcam to track where you look on screen.
               </p>
+              {/* Privacy Guarantee Sentence */}
+              <div className="p-3.5 bg-[#0a1e17] border-2 border-emerald-500/50 rounded-2xl flex items-center gap-2.5 text-xs font-semibold text-emerald-200 text-left">
+                <Shield className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                <span>
+                  Privacy guarantee: Your video stays strictly in your browser. No video, images, or facial data are ever saved or sent anywhere.
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl pt-2">
+
+            <div className="w-full max-w-md space-y-3 pt-2">
               <GazeButton
-                id="onboarding-enable-camera-btn"
-                onClick={handleStartCameraAndCalibrate}
-                label="Enable Eye Control"
-                subtitle="Starts camera & 9-point calibration"
-                icon="👁️"
-                variant="accent"
+                id="onboarding-start-camera-btn"
+                onClick={() => {
+                  setUseEyeControl(true);
+                  if (!isCameraActive) onStartCamera();
+                  setStep("calibrate");
+                }}
+                label={isCameraActive ? "Camera is Ready" : "Start Camera"}
+                subtitle="Enables hands-free eye control"
+                icon={<Camera className="w-6 h-6 text-slate-950" />}
+                variant="primary"
                 size="large"
-                className="!min-h-[80px]"
+                className="w-full justify-center !min-h-[84px]"
               />
+
+              {/* Explicit Mouse / Keyboard option */}
               <GazeButton
                 id="onboarding-skip-camera-btn"
-                onClick={handleSkipEyeControl}
-                label="Skip Eye Control"
-                subtitle="Use Mouse & Keyboard only"
-                icon="🖱️"
-                variant="card"
-                size="large"
-                className="!min-h-[80px]"
+                onClick={() => {
+                  setUseEyeControl(false);
+                  setStep("board");
+                }}
+                label="Use Mouse or Keyboard Instead"
+                subtitle="Skip camera and eye tracking"
+                icon={<MousePointer className="w-5 h-5 text-slate-300" />}
+                variant="outline"
+                size="compact"
+                className="w-full justify-center !min-h-[64px]"
               />
             </div>
           </div>
         )}
 
-        {/* 3. Calibration In-Progress Screen */}
+        {/* 3. Eye Setup / Calibrate Step */}
         {step === "calibrate" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-4xl shadow-[0_0_25px_rgba(251,191,36,0.4)] animate-pulse">
-              🎯
+            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center">
+              <Target className="w-10 h-10 text-amber-300" />
             </div>
-            <h2 className="text-3xl font-black text-white">
-              {isCalibrated ? "Calibration Complete!" : "Eye Calibration"}
-            </h2>
-            <p className="text-sm sm:text-base text-slate-300 max-w-md">
-              {isCalibrated
-                ? "Your eye gaze coordinates have been successfully mapped to your screen."
-                : "Follow the 9 target dots on your screen with your eyes, or proceed when ready."}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md pt-2">
-              {!isCalibrated && (
-                <GazeButton
-                  id="onboarding-reopen-calib-btn"
-                  onClick={onOpenCalibration}
-                  label="Show Calibration Screen"
-                  icon="🎯"
-                  variant="secondary"
-                  size="compact"
-                  className="!min-h-[56px] text-xs font-bold"
-                />
-              )}
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl font-black text-white tracking-tight">
+                Let&apos;s Set Up Your Eyes
+              </h2>
+              <p className="text-base text-slate-300 max-w-lg leading-relaxed">
+                Look at 9 glowing dots to tune the eye tracker to your screen for best accuracy.
+              </p>
+            </div>
+
+            <div className="w-full max-w-md space-y-3 pt-2">
               <GazeButton
-                id="onboarding-calib-proceed-btn"
+                id="onboarding-open-calibration-btn"
+                onClick={() => {
+                  onOpenCalibration();
+                }}
+                label={isCalibrated ? "Eyes Already Calibrated" : "Tune Eye Tracking Now"}
+                subtitle={isCalibrated ? "Ready! Click to retune" : "Takes about 20 seconds"}
+                icon={<Target className="w-6 h-6 text-slate-950" />}
+                variant="primary"
+                size="large"
+                className="w-full justify-center !min-h-[84px]"
+              />
+
+              <GazeButton
+                id="onboarding-calibrate-next"
                 onClick={() => setStep("board")}
-                label="Proceed to Board Selection"
-                icon="➔"
-                variant="accent"
+                label="Continue to Board Selection"
+                icon={<ArrowRight className="w-5 h-5 text-slate-300" />}
+                variant="secondary"
                 size="compact"
-                className="!min-h-[56px] text-xs font-bold"
+                className="w-full justify-center !min-h-[64px]"
               />
             </div>
           </div>
@@ -205,34 +232,45 @@ export function OnboardingFlow({
         {/* 4. Choose Board Step */}
         {step === "board" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-2xl bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center text-3xl">
-              🏫
+            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center">
+              <BookOpen className="w-10 h-10 text-amber-300" />
             </div>
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl font-black text-white tracking-tight">
                 Choose Your School Board
               </h2>
-              <p className="text-sm text-amber-300 font-bold mt-1">
-                Standard: Class 10 (English Medium)
+              <p className="text-base text-slate-300 max-w-lg leading-relaxed">
+                All explanations and citations will be grounded in this curriculum.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
-              {Object.entries(scope.supported_boards).map(([code, name]) => (
-                <GazeButton
-                  key={code}
-                  id={`onboarding-board-${code}`}
-                  onClick={() => {
-                    setSelectedBoard(code);
-                    setStep("subject");
-                  }}
-                  label={name}
-                  subtitle={code.toUpperCase()}
-                  icon="📚"
-                  variant={selectedBoard === code ? "active" : "card"}
-                  size="large"
-                  className="!min-h-[88px] text-base"
-                />
-              ))}
+
+            <div className="w-full max-w-md grid grid-cols-1 gap-3 pt-2">
+              <GazeButton
+                id="onboarding-board-tn"
+                onClick={() => {
+                  setSelectedBoard("tn");
+                  setStep("subject");
+                }}
+                label="Tamil Nadu State Board"
+                subtitle="Samacheer Kalvi · Class 10"
+                variant={selectedBoard === "tn" ? "active" : "card"}
+                size="large"
+                className="w-full justify-center !min-h-[84px]"
+              />
+
+              <GazeButton
+                id="onboarding-board-cbse"
+                onClick={() => {
+                  setSelectedBoard("cbse");
+                  setStep("subject");
+                }}
+                label="CBSE / NCERT"
+                subtitle="National Curriculum · Class 10"
+                variant={selectedBoard === "cbse" ? "active" : "card"}
+                size="large"
+                className="w-full justify-center !min-h-[84px]"
+              />
             </div>
           </div>
         )}
@@ -240,83 +278,74 @@ export function OnboardingFlow({
         {/* 5. Choose Subject Step */}
         {step === "subject" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-16 h-16 rounded-2xl bg-purple-400/20 border-2 border-purple-400 flex items-center justify-center text-3xl">
-              📖
+            <div className="w-20 h-20 rounded-3xl bg-amber-400/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center">
+              <BookOpen className="w-10 h-10 text-amber-300" />
             </div>
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl font-black text-white tracking-tight">
                 Select Your Subject
               </h2>
-              <p className="text-sm text-purple-300 font-bold mt-1">
-                Board: {scope.supported_boards[selectedBoard] || selectedBoard.toUpperCase()} • Class 10
+              <p className="text-base text-slate-300 max-w-lg leading-relaxed">
+                Choose the subject you want to study today.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
-              {Object.entries(scope.supported_subjects).map(([code, name]) => (
-                <GazeButton
-                  key={code}
-                  id={`onboarding-subj-${code}`}
-                  onClick={() => {
-                    setSelectedSubject(code);
-                    setStep("ready");
-                  }}
-                  label={name}
-                  subtitle="Class 10 Textbook"
-                  icon={code.includes("sci") && !code.includes("social") ? "🔬" : "🌍"}
-                  variant={selectedSubject === code ? "active" : "card"}
-                  size="large"
-                  className="!min-h-[88px] text-base"
-                />
-              ))}
+
+            <div className="w-full max-w-md grid grid-cols-1 gap-3 pt-2">
+              <GazeButton
+                id="onboarding-subj-science"
+                onClick={() => {
+                  setSelectedSubject("science");
+                  setStep("ready");
+                }}
+                label="Science"
+                subtitle="Physics, Chemistry, Biology"
+                variant={selectedSubject === "science" ? "active" : "card"}
+                size="large"
+                className="w-full justify-center !min-h-[84px]"
+              />
+
+              <GazeButton
+                id="onboarding-subj-social"
+                onClick={() => {
+                  setSelectedSubject("social_science");
+                  setStep("ready");
+                }}
+                label="Social Science"
+                subtitle="History, Civics, Geography, Economics"
+                variant={selectedSubject === "social_science" ? "active" : "card"}
+                size="large"
+                className="w-full justify-center !min-h-[84px]"
+              />
             </div>
-            <GazeButton
-              id="onboarding-back-to-board"
-              onClick={() => setStep("board")}
-              label="Back to Board Selection"
-              icon="←"
-              variant="outline"
-              size="compact"
-              className="mt-2"
-            />
           </div>
         )}
 
         {/* 6. Ready Step */}
         {step === "ready" && (
           <div className="space-y-6 w-full flex flex-col items-center">
-            <div className="w-20 h-20 rounded-3xl bg-emerald-400/20 border-2 border-emerald-400 flex items-center justify-center text-4xl shadow-[0_0_25px_rgba(52,211,153,0.4)]">
-              ✨
+            <div className="w-20 h-20 rounded-3xl bg-emerald-400/20 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
-              You are Ready to Learn!
-            </h2>
-            <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-6 text-left max-w-md w-full space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Board:</span>
-                <span className="text-white font-bold">{scope.supported_boards[selectedBoard] || selectedBoard}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Class:</span>
-                <span className="text-white font-bold">Standard 10</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Subject:</span>
-                <span className="text-amber-300 font-bold">{scope.supported_subjects[selectedSubject] || selectedSubject}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">Eye Control:</span>
-                <span className="text-emerald-400 font-bold">{useEyeControl ? "Enabled 👀" : "Mouse / Keyboard 🖱️"}</span>
-              </div>
+
+            <div className="space-y-2">
+              <h2 id="onboarding-step-title" className="text-3xl font-black text-white tracking-tight">
+                You are Ready to Learn!
+              </h2>
+              <p className="text-base text-slate-300 max-w-lg leading-relaxed">
+                Selected: <strong className="text-amber-300">{selectedBoard.toUpperCase()} • Class 10 • {selectedSubject === "science" ? "Science" : "Social Science"}</strong>
+              </p>
             </div>
-            <div className="w-full max-w-md pt-2">
+
+            <div className="w-full max-w-sm pt-2">
               <GazeButton
                 id="onboarding-finish-btn"
                 onClick={handleFinishOnboarding}
-                label="Start Learning with AI Tutor"
-                icon="🚀"
-                variant="accent"
+                label="Start Learning!"
+                icon={<Sparkles className="w-6 h-6 text-slate-950" />}
+                variant="primary"
                 size="large"
-                className="w-full !min-h-[72px] text-lg font-black"
+                className="w-full justify-center !min-h-[84px] text-lg font-black"
               />
             </div>
           </div>

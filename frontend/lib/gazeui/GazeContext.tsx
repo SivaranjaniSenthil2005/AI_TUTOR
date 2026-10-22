@@ -34,6 +34,14 @@ const DEFAULT_SETTINGS: GazeUiSettings = {
   highContrast: false,
   largeText: false,
   isPaused: false,
+  edgeScrollingEnabled: false,
+  focusMode: false,
+  theme: "calm",
+  fontFamily: "lexend",
+  textSize: "100%",
+  lineSpacing: "normal",
+  letterSpacing: "normal",
+  targetSize: "default",
 };
 
 export type TargetProgressSubscriber = (
@@ -110,31 +118,64 @@ export function GazeProvider({
     globalSoundEffects.enabled = settings.soundEnabled;
   }, [settings.soundEnabled]);
 
-  // Sync HTML classes for theme accessibility
+  // Sync HTML classes and data attributes for theme, font, and accessibility
   useEffect(() => {
     if (typeof document !== "undefined") {
       const root = document.documentElement;
-      if (settings.highContrast) {
+
+      // Theme attribute & classes
+      if (settings.highContrast || settings.theme === "high-contrast") {
         root.classList.add("high-contrast");
+        root.setAttribute("data-theme", "high-contrast");
+      } else if (settings.theme === "light") {
+        root.classList.remove("high-contrast");
+        root.setAttribute("data-theme", "light");
       } else {
         root.classList.remove("high-contrast");
+        root.setAttribute("data-theme", "calm");
       }
 
-      if (settings.largeText) {
+      // Font family attribute
+      root.setAttribute("data-font", settings.fontFamily || "lexend");
+
+      // Text size
+      if (settings.largeText && !settings.textSize) {
+        root.setAttribute("data-text-size", "125%");
         root.classList.add("large-text");
       } else {
-        root.classList.remove("large-text");
+        root.setAttribute("data-text-size", settings.textSize || "100%");
+        if (settings.textSize === "125%" || settings.textSize === "150%") {
+          root.classList.add("large-text");
+        } else {
+          root.classList.remove("large-text");
+        }
       }
 
+      // Line spacing
+      root.setAttribute("data-line-spacing", settings.lineSpacing || "normal");
+
+      // Letter spacing
+      root.setAttribute("data-letter-spacing", settings.letterSpacing || "normal");
+
+      // Reduced motion
       if (settings.reducedMotion) {
         root.classList.add("reduced-motion");
       } else {
         root.classList.remove("reduced-motion");
       }
     }
-  }, [settings.highContrast, settings.largeText, settings.reducedMotion]);
+  }, [
+    settings.highContrast,
+    settings.largeText,
+    settings.reducedMotion,
+    settings.theme,
+    settings.fontFamily,
+    settings.textSize,
+    settings.lineSpacing,
+    settings.letterSpacing,
+  ]);
 
-  // Invalidate rect cache on scroll or resize
+  // Invalidate rect cache on scroll or resize via ResizeObserver and window listeners
   useEffect(() => {
     const handleInvalidate = () => {
       rectCache.invalidate();
@@ -143,9 +184,20 @@ export function GazeProvider({
     window.addEventListener("resize", handleInvalidate, { passive: true });
     window.addEventListener("scroll", handleInvalidate, { passive: true, capture: true });
 
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && document.body) {
+      ro = new ResizeObserver(() => {
+        rectCache.invalidate();
+      });
+      ro.observe(document.body);
+    }
+
     return () => {
       window.removeEventListener("resize", handleInvalidate);
       window.removeEventListener("scroll", handleInvalidate, { capture: true });
+      if (ro) {
+        ro.disconnect();
+      }
     };
   }, [rectCache]);
 
@@ -303,6 +355,13 @@ export function GazeProvider({
 
       const currentActiveId = snapshot.targetId;
       const prevActiveId = prevActiveTargetIdRef.current;
+
+      // Freeze rect cache for target being dwelled upon so it never shifts under gaze
+      if (currentActiveId && (snapshot.state === "dwelling" || snapshot.state === "activated")) {
+        rectCache.freezeTarget(currentActiveId);
+      } else if (prevActiveId && prevActiveId !== currentActiveId) {
+        rectCache.unfreezeTarget(prevActiveId);
+      }
 
       // Notify previous active target subscribers if it was deactivated
       if (prevActiveId && prevActiveId !== currentActiveId) {

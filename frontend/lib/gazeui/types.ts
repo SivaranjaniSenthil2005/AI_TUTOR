@@ -36,6 +36,14 @@ export interface GazeUiSettings {
   highContrast: boolean;    // High contrast theme mode (default false)
   largeText: boolean;       // Extra large typography mode (default false)
   isPaused: boolean;        // User manual eye control pause (default false)
+  edgeScrollingEnabled?: boolean; // Edge scroll zones opt-in (default false)
+  focusMode?: boolean;      // Focus mode hides camera card and status pills (default false)
+  theme?: "calm" | "light" | "high-contrast"; // Visual theme (default "calm")
+  fontFamily?: "lexend" | "atkinson" | "opendyslexic";
+  textSize?: "100%" | "125%" | "150%";
+  lineSpacing?: "normal" | "relaxed" | "loose";
+  letterSpacing?: "normal" | "wide";
+  targetSize?: "default" | "large";
 }
 
 export interface DwellSnapshot {

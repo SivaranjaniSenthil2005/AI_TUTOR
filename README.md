@@ -94,20 +94,84 @@ flowchart TD
 
 ## User Interface & Screenshots
 
-| Onboarding Flow | Main Learning Workspace |
-| :---: | :---: |
-| ![Onboarding](docs/screenshots/01_onboarding.png) | ![Main Workspace](docs/screenshots/02_main_workspace.png) |
-| *Step-by-step setup with camera check and board selection* | *Gaze-controlled chat, source citations, and learning modes* |
+The frontend UI/UX has been redesigned from the ground up for neurodiverse Class 10 school students, engineered for rock-solid stability and effortless gaze + voice control.
 
-| Learner Settings & Accessibility | Privacy & Data Protection Panel |
+| Onboarding Flow | Main Learning Workspace (Empty State) |
 | :---: | :---: |
-| ![Settings](docs/screenshots/03_settings_modal.png) | ![Privacy Panel](docs/screenshots/04_privacy_panel.png) |
-| *Personalized dwell speeds, high contrast, and voice pace* | *Zero-data-collection guarantee & local CV processing* |
+| ![Onboarding](docs/screenshots/01_onboarding_welcome.png) | ![Empty Ask Screen](docs/screenshots/02_empty_ask_1366x768.png) |
+| *Single-action step-by-step onboarding with camera check and board chooser* | *Slim 64px TopBar, fixed 4:3 camera card, starter cards, and 112px BottomDock* |
 
-| Gaze & Usability Evaluation Lab (`/eval`) |
-| :---: |
-| ![Eval Lab](docs/screenshots/05_eval_lab.png) |
-| *Dev-only suite for target selection, Midas touch tests, and automated SUS scoring* |
+| Answer Card with Citations & Follow-ups | Settings Drawer (Slide-Over Panel) |
+| :---: | :---: |
+| ![Answer Displayed](docs/screenshots/07_answer_displayed_1366x768.png) | ![Settings Drawer](docs/screenshots/08_settings_drawer_1366x768.png) |
+| *22–24px high-readability text, step badges, verified sources, and docked scroll buttons* | *Eye control steppers, dwell duration, voice selection, reading levels, and Focus Mode* |
+
+| Rock-Solid 9-Point Calibration Layer | High Contrast & Light Themes |
+| :---: | :---: |
+| ![Calibration Screen](docs/screenshots/09_calibration_screen_1366x768.png) | ![Theme High Contrast](docs/screenshots/11_theme_high_contrast_1366x768.png) |
+| *Full-viewport isolated overlay with static dot centers and shrinking SVG timer rings* | *Theme options: Calm (navy/warm yellow), Light (soft off-white), and High Contrast (pure black)* |
+
+---
+
+## Design System & Neurodiverse Aesthetics
+
+AI Tutor implements a purpose-built design system documented in [`frontend/docs/design-system.md`](frontend/docs/design-system.md) and previewable live at the dev-only **`/design`** route:
+
+- **Calm Color Palette:**
+  - **Calm (Default):** Deep midnight slate (`#070b14`, `#0d1527`), soft warm yellow accents (`#fbbf24`), calming teal (`#14b8a6`), and gentle coral warnings (`#f87171`).
+  - **Light Theme:** Soft off-white canvas (`#f8fafc`, `#ffffff`) with amber and deep slate typography, minimizing eye strain.
+  - **High Contrast Theme:** Pitch-black background (`#000000`) with high-voltage yellow (`#facc15`) and pure white borders meeting WCAG AAA standard.
+- **Reading-Optimized Typography:**
+  - Default font: **Lexend** (specifically engineered to reduce visual crowding and enhance reading fluency for neurodiverse students).
+  - Alternative dyslexia-friendly fonts: **Atkinson Hyperlegible** and locally bundled **OpenDyslexic**.
+  - Stepped sizing (100%, 125%, 150%) and adjustable line spacing (1.4 to 1.8).
+- **Uniform Iconography:** Pure `lucide-react` line icons paired with explicit text labels—eliminating emoji inconsistency and ambiguous iconography.
+- **Visual Clarity & Focus Mode:**
+  - Dedicated **Focus Mode** (`gazeSettings.focusMode`) hides peripheral widgets (camera card, status pills) and isolates the conversation and bottom dock.
+- **Interactive Component Library:** Standardized accessible components located in `frontend/components/ui/` (`GazeButton`, `StatusPill`, `Card`, `Chip`, `SegmentedControl`, `Stepper`, `Drawer`, `Toast`, `EmptyState`, `Skeleton`).
+
+---
+
+## Stability Engineering Rules ("Gaze Targets Never Move")
+
+Because eye-gaze tracking relies on spatial predictability, **gaze targets must NEVER move or shift**. The following architectural rules are strictly enforced:
+
+1. **Strict 100dvh App Shell:**
+   - Root container is strictly `height: 100dvh; max-height: 100dvh; overflow: clip;`.
+   - Grid layout: `grid-template-rows: 64px 1fr 112px` (Slim TopBar, Main Workspace, Fixed BottomDock).
+   - Zero page-level scrolling. Only inner containers (`#chat-scroll-container` and settings drawer body) may scroll.
+2. **Zero Dynamic Layout Shift (CLS < 0.02):**
+   - No `transform: scale()`, `transform: translate()`, padding changes, or border-width modifications on hover, focus, dwell, or activation.
+   - State changes are expressed strictly via color, outline, box-shadow, and **internal progress bars/rings** filling inside fixed boundaries.
+   - 4px transparent borders are pre-reserved on all gaze buttons using `box-sizing: border-box`.
+3. **Reserved Slots for Dynamic Content:**
+   - Status pills have static dimensions (`w-[108px] h-8`) and never resize on text change.
+   - The brand container reserves a fixed slot (`w-[190px]`) so demo badges or flags never push adjacent targets.
+   - The webcam card maintains a fixed 4:3 aspect ratio (`aspect-4/3`) before, during, and after camera activation.
+   - Streaming answer cards reserve `min-h-[220px]` with static step badge dimensions.
+4. **Target Rect Freezing During Dwell:**
+   - When a student looks at a target and dwell progress starts, the hit-test bounding box cache is frozen (`freezeTarget`) until dwell completes or cancels.
+   - Minimum 24px layout gap between all gaze targets prevents hit-pad overlap.
+5. **Deterministic Large Gaze Scroll Buttons:**
+   - Hover-based edge scrolling is replaced by two docked, high-contrast gaze buttons ("Scroll Up" and "Scroll Down") beside the chat area that scroll by one full viewport per activation.
+6. **Isolated Full-Viewport Calibration Overlay:**
+   - Calibration runs in a `position: fixed; inset: 0; z-50` full-viewport overlay.
+   - Main UI is hidden, mouse cursor is suppressed (`cursor: none`), and dot centers are static percentages (10%/50%/90%) with shrinking SVG timer rings.
+
+---
+
+## Manual Testing Checklist
+
+Run through this checklist for comprehensive user journey validation:
+
+- [ ] **Gaze-Only Full Journey:** Start onboarding -> camera permission -> eye calibration -> choose Tamil Nadu / CBSE -> choose Science -> dwell on starter question -> dwell on "Read Aloud" -> dwell on "Explain Differently" (switch to Step-by-Step).
+- [ ] **Target Immobility Check:** Verify gaze targets do not move by even 1px during dwell, streaming, or camera activation.
+- [ ] **Display Scaling & Zoom:** Verify zero clipped buttons and zero horizontal scroll at 100%, 125%, and 150% Windows display scaling and browser zoom.
+- [ ] **Docked Scrolling:** Ask a long question, verify "Scroll Down" activates smoothly by one viewport, and disables when reaching the bottom.
+- [ ] **Emergency Pause:** Look at "Pause Eye Control" in the TopBar. Verify gaze tracking pauses immediately and displays "PAUSED (Look)".
+- [ ] **Focus Mode:** Open Settings -> Display -> toggle Focus Mode. Verify camera card and pills fade out while the dock and answer remain rock-solid.
+- [ ] **Theme Switching:** Toggle between Calm, Light, and High Contrast. Verify high-contrast visibility and full WCAG AA/AAA compliance.
+- [ ] **Keyboard & Mouse Fallback:** Navigate the entire app using Tab / Space / Enter and mouse clicks.
 
 ---
 

@@ -307,16 +307,6 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
           isPaused={isPaused}
         />
 
-        {/* Fullscreen Calibration Screen Modal */}
-        <CalibrationScreen
-          isOpen={isCalibrationOpen}
-          onClose={() => setCalibrationOpen(false)}
-          onComplete={handleCalibrationComplete}
-          gazeRef={gazeRef}
-          isCameraActive={webcamStatus === "active"}
-          onStartCamera={start}
-        />
-
         <div
           className={`flex flex-col h-full bg-[#0b1120] rounded-3xl border-4 border-slate-800 p-6 shadow-2xl ${className}`}
         >
@@ -385,8 +375,8 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
             </div>
           </div>
 
-          {/* Video & Landmark Canvas Container */}
-          <div className="relative flex-1 w-full min-h-[300px] sm:min-h-[360px] bg-[#070b14] rounded-2xl border-2 border-slate-700 overflow-hidden flex items-center justify-center shadow-inner">
+          {/* Fixed 4:3 Video & Landmark Container (Identical size in both active & idle) */}
+          <div className="relative w-full aspect-[4/3] bg-[#070b14] rounded-2xl border-2 border-slate-700 overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0">
             {/* Mirrored Video Element */}
             <video
               ref={videoRef}
@@ -394,7 +384,7 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
               playsInline
               muted
               aria-label="Live mirrored webcam feed for AI Tutor gaze tracking"
-              className={`w-full h-full object-cover transition-opacity duration-300 [transform:scaleX(-1)] ${
+              className={`w-full h-full object-cover [transform:scaleX(-1)] ${
                 webcamStatus === "active" ? "opacity-100 block" : "opacity-0 hidden"
               }`}
             />
@@ -489,141 +479,67 @@ export const WebcamView = forwardRef<WebcamViewHandle, WebcamViewProps>(
             </div>
           )}
 
-          {/* Large Friendly Status Banner for Young Learners */}
-          {webcamStatus === "active" && (
-            <div className="mt-3">
-              {landmarkStatus === "loading" && (
-                <div className="p-3 bg-amber-950/80 border-2 border-amber-500/60 rounded-xl text-amber-200 font-bold text-lg flex items-center gap-3">
-                  <span className="text-2xl animate-spin">⏳</span>
+          {/* Reserved Fixed-Height Friendly Status Slot */}
+          <div className="h-12 w-full mt-3 flex items-center justify-between px-3.5 rounded-xl border bg-[#0d1527] text-xs font-bold flex-shrink-0">
+            {webcamStatus === "active" ? (
+              landmarkStatus === "tracking" ? (
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                  <span>I can see you</span>
+                </div>
+              ) : landmarkStatus === "loading" ? (
+                <div className="flex items-center gap-2 text-amber-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
                   <span>Loading eye tracker...</span>
                 </div>
-              )}
-              {landmarkStatus === "tracking" && (
-                <div className="p-3 bg-emerald-950/80 border-2 border-emerald-500/60 rounded-xl text-emerald-200 font-black text-lg sm:text-xl flex flex-wrap items-center justify-between gap-3 shadow-[0_0_15px_rgba(52,211,153,0.15)]">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">✨</span>
-                    <span>I can see you!</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setCalibrationOpen(true)}
-                      className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl border border-amber-300 shadow cursor-pointer transition-all hover:scale-105 active:scale-95"
-                    >
-                      🎯 {mapper ? "Recalibrate" : "Calibrate Eyes"}
-                    </button>
-                    <button
-                      onClick={startSetCenter}
-                      disabled={isCalibratingCenter}
-                      className="px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-100 text-xs font-bold rounded-xl border border-emerald-400 cursor-pointer"
-                      title="Calibrate neutral center gaze"
-                    >
-                      Set Center
-                    </button>
-                  </div>
+              ) : (
+                <div className="flex items-center gap-2 text-amber-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                  <span>Move closer to camera</span>
                 </div>
-              )}
-              {(landmarkStatus === "no-face" || landmarkStatus === "ready") && (
-                <div className="p-3 bg-slate-900 border-2 border-amber-400/50 rounded-xl text-amber-300 font-bold text-lg flex items-center gap-3">
-                  <span className="text-2xl">👀</span>
-                  <span>I can&apos;t see your face. Please sit in front of the camera with good light.</span>
-                </div>
-              )}
-              {landmarkStatus === "error" && (
-                <div className="p-3 bg-rose-950/80 border-2 border-rose-600 rounded-xl text-rose-200 font-bold text-base flex items-center gap-2">
-                  <span>⚠️</span>
-                  <span>{landmarkError || "Error in landmark tracking."}</span>
-                </div>
-              )}
-            </div>
-          )}
+              )
+            ) : webcamStatus === "requesting" ? (
+              <div className="flex items-center gap-2 text-amber-300">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                <span>Starting camera...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-500" />
+                <span>Camera is off</span>
+              </div>
+            )}
 
-          {/* Gentle Low-FPS Performance Notice */}
-          {lowFpsWarning && webcamStatus === "active" && (
-            <div className="mt-2 p-3 bg-indigo-950/90 border-2 border-indigo-400/60 rounded-xl text-indigo-200 text-sm font-semibold flex items-center gap-2">
-              <span className="text-lg">💡</span>
-              <span>
-                Eye tracker is running slowly ({fps} FPS). Closing extra browser tabs or apps will make it smoother!
-              </span>
-            </div>
-          )}
+            {!mapper && webcamStatus === "active" && (
+              <button
+                type="button"
+                onClick={() => setCalibrationOpen(true)}
+                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-lg border border-amber-300 cursor-pointer calm-fade"
+              >
+                Setup Eyes
+              </button>
+            )}
+          </div>
 
-          {/* Eye Tracking Controls & Debug Toggles */}
-          {webcamStatus === "active" && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 p-3 bg-[#070b14] rounded-xl border border-slate-800 text-sm">
-              <label className="flex items-center gap-2 font-bold text-slate-300 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showOverlay}
-                  onChange={(e) => setShowOverlay(e.target.checked)}
-                  className="w-5 h-5 accent-amber-400 rounded cursor-pointer"
-                />
-                <span>Show eye tracking</span>
-              </label>
-
-              <label className="flex items-center gap-2 font-semibold text-slate-400 hover:text-slate-200 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showDebug}
-                  onChange={(e) => setShowDebug(e.target.checked)}
-                  className="w-4 h-4 accent-amber-400 rounded cursor-pointer"
-                />
-                <span>Debug / Calibration</span>
-              </label>
-            </div>
-          )}
-
-          {/* Comprehensive Debug & Calibration Panel (Hidden behind Debug toggle) */}
-          {showDebug && webcamStatus === "active" && (
-            <GazeDebugPanel
-              fps={fps}
-              direction={direction}
-              confidence={confidence}
-              isBlinking={isBlinking}
-              faceVisible={faceVisible}
-              baseline={baseline}
-              latestGaze={gazeRef.current}
-              gazePoint={gazePoint}
-              mapper={mapper}
-              history={history}
-              minCutoff={minCutoff}
-              beta={beta}
-              thresholdX={thresholdX}
-              thresholdY={thresholdY}
-              showGazeDot={showGazeDot}
-              onToggleGazeDot={setShowGazeDot}
-              onMinCutoffChange={setMinCutoff}
-              onBetaChange={setBeta}
-              onThresholdXChange={setThresholdX}
-              onThresholdYChange={setThresholdY}
-              onSetCenter={startSetCenter}
-              onResetBaseline={resetBaseline}
-              onOpenCalibration={() => setCalibrationOpen(true)}
-              onClearCalibration={handleClearCalibration}
-              isCalibratingCenter={isCalibratingCenter}
-              calibrationProgress={calibrationProgress}
-              calibrationMessage={calibrationMessage}
-            />
-          )}
-
-          {/* Primary Action Button (min 64px height) */}
+          {/* Primary Action Button (min 60px height) */}
           <div className="mt-4 flex flex-col gap-3">
             {webcamStatus !== "active" ? (
               <button
                 id="start-camera-btn"
+                type="button"
                 onClick={start}
                 disabled={webcamStatus === "requesting"}
-                className="w-full min-h-[64px] py-4 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-black text-2xl tracking-wide shadow-lg border-2 border-amber-300 hover:scale-[1.01] active:scale-[0.99] transition-all focus:outline-none focus:ring-8 focus:ring-amber-400 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full min-h-[60px] py-3.5 px-6 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xl tracking-wide shadow-lg border-2 border-amber-300 calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="text-3xl">▶</span>
                 <span>Start Camera</span>
               </button>
             ) : (
               <button
                 id="stop-camera-btn"
+                type="button"
                 onClick={stop}
-                className="w-full min-h-[64px] py-4 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-black text-2xl tracking-wide shadow-lg border-2 border-rose-400 hover:scale-[1.01] active:scale-[0.99] transition-all focus:outline-none focus:ring-8 focus:ring-rose-400 flex items-center justify-center gap-3 cursor-pointer"
+                className="w-full min-h-[60px] py-3.5 px-6 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xl tracking-wide shadow-lg border-2 border-rose-500 calm-fade focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-rose-400 flex items-center justify-center gap-3 cursor-pointer"
               >
-                <span className="text-3xl">⏹</span>
                 <span>Stop Camera</span>
               </button>
             )}
