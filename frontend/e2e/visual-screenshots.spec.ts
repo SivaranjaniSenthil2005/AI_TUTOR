@@ -49,7 +49,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
@@ -65,7 +65,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
@@ -81,7 +81,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
@@ -97,7 +97,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
@@ -113,7 +113,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
@@ -129,7 +129,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#typed-question-input");
@@ -151,7 +151,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#header-settings-btn");
@@ -170,6 +170,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#header-settings-btn");
@@ -182,7 +183,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
     await saveScreenshot(page, "09_calibration_screen_1366x768.png");
   });
 
-  test("10. Theme: Light (1366x768)", async ({ page }) => {
+  test("10. Theme: Calm Dark (1366x768)", async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.addInitScript(() => {
       window.localStorage.clear();
@@ -190,12 +191,12 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "light");
+      window.localStorage.setItem("ai_tutor_theme", "calm");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");
     await page.waitForTimeout(300);
-    await saveScreenshot(page, "10_theme_light_1366x768.png");
+    await saveScreenshot(page, "10_theme_calm_1366x768.png");
   });
 
   test("11. Theme: High Contrast (1366x768)", async ({ page }) => {
@@ -222,7 +223,7 @@ test.describe("Visual Regression Screenshots Suite", () => {
       window.localStorage.setItem("ai_tutor_use_mock", "1");
       window.localStorage.setItem("ai_tutor_board", "tn");
       window.localStorage.setItem("ai_tutor_subject", "science");
-      window.localStorage.setItem("ai_tutor_theme", "calm");
+      window.localStorage.setItem("ai_tutor_theme", "light");
     });
     await page.goto("/");
     await page.waitForSelector("#starter-q-0");

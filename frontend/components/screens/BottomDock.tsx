@@ -45,7 +45,7 @@ export const BottomDock = React.memo(function BottomDock({
     <nav
       id="bottom-dock-container"
       aria-label="Primary Learning Controls"
-      className="h-28 w-full max-w-full border-t-2 border-slate-800 bg-[#0d1527] px-4 sm:px-6 py-3 select-none flex-shrink-0 z-20 shadow-2xl flex items-center overflow-clip"
+      className="h-28 w-full max-w-full border-t-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-3 select-none flex-shrink-0 z-20 shadow-lg flex items-center overflow-clip"
     >
       <div className="w-full grid grid-cols-4 gap-4 items-center h-full">
         {/* 1. Ask with Voice (Primary Action, Largest) */}
@@ -59,7 +59,7 @@ export const BottomDock = React.memo(function BottomDock({
             variant={isListening ? "active" : "primary"}
             size="xl"
             disabled={isThinking}
-            className="w-full !h-full font-black text-slate-950 !border-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.35)]"
+            className="w-full !h-full font-black text-slate-950 !border-amber-500 shadow-md"
           />
         </div>
 
@@ -70,7 +70,7 @@ export const BottomDock = React.memo(function BottomDock({
             onClick={onTypeQuestion}
             label="Type Question"
             subtitle="Keyboard input"
-            icon={<Keyboard className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />}
+            icon={<Keyboard className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
             variant="card"
             size="large"
             disabled={isThinking}
@@ -86,7 +86,7 @@ export const BottomDock = React.memo(function BottomDock({
               onClick={onReadAloud}
               label="Read Aloud"
               subtitle={hasAnswerToRead ? "Listen to tutor" : "Available on answer"}
-              icon={<Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />}
+              icon={<Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
               variant="card"
               size="large"
               disabled={!hasAnswerToRead || isThinking}
@@ -124,7 +124,7 @@ export const BottomDock = React.memo(function BottomDock({
             label="Explain Differently"
             subtitle={`Mode: ${modeLabel}`}
             tag={modeLabel}
-            icon={<Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />}
+            icon={<Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-300" />}
             variant="card"
             size="large"
             disabled={isThinking}

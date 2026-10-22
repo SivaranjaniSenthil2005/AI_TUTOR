@@ -60,37 +60,37 @@ export function ListenView({
   return (
     <div className="space-y-6">
       {/* 1. Header & Audio Center Overview */}
-      <div className="bg-[#131f38] border-2 border-slate-700 rounded-2xl p-5 shadow-md flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] rounded-2xl p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="text-2xl font-black text-white flex items-center gap-2">
+          <h3 className="text-2xl font-black text-[var(--text-primary)] flex items-center gap-2">
             <span>🔊</span> Audio & Speech Center
           </h3>
-          <p className="text-xs sm:text-sm font-semibold text-amber-300 mt-0.5">
+          <p className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-300 mt-0.5">
             Paced text-to-speech with high-contrast read-along highlighting
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-[#0d1527] px-3.5 py-1.5 rounded-xl border border-slate-700 text-xs font-bold text-slate-300">
+        <div className="flex items-center gap-2 bg-[var(--bg-surface-raised)] px-3.5 py-1.5 rounded-xl border border-[var(--border-strong)] text-xs font-bold text-[var(--text-secondary)]">
           <span>Current Speed:</span>
-          <span className="text-amber-300 font-extrabold">{currentSpeed.toFixed(1)}x</span>
+          <span className="text-amber-700 dark:text-amber-300 font-extrabold">{currentSpeed.toFixed(1)}x</span>
         </div>
       </div>
 
       {/* 2. Latest Message Reader or Empty State */}
       {latestTutorMessage ? (
-        <div className="bg-[#0b1120] border-4 border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b-2 border-slate-800 text-xs font-black uppercase tracking-wider text-slate-400">
-            <span className="text-amber-300">Latest Explanation</span>
+        <div className="bg-[var(--bg-surface)] border-4 border-[var(--border-subtle)] rounded-3xl p-6 sm:p-8 shadow-md space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b-2 border-[var(--border-subtle)] text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+            <span className="text-amber-700 dark:text-amber-300">Latest Explanation</span>
             <span>{new Date(latestTutorMessage.timestamp).toLocaleTimeString()}</span>
           </div>
 
           {/* Large Read-Along Text Body */}
-          <div className="bg-[#070b14] border-2 border-slate-800 rounded-2xl p-6 shadow-inner">
+          <div className="bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] rounded-2xl p-6 shadow-inner">
             <ReadAlongText
               text={latestTutorMessage.text}
               isSpeaking={tts.speaking}
               currentCharIndex={tts.currentCharIndex}
               currentSentenceIndex={tts.currentSentenceIndex}
-              className="text-xl sm:text-2xl font-semibold !leading-relaxed text-slate-100"
+              className="text-xl sm:text-2xl font-semibold !leading-relaxed text-[var(--text-primary)]"
             />
           </div>
 
@@ -141,12 +141,12 @@ export function ListenView({
           </div>
         </div>
       ) : (
-        <div className="bg-[#0f172a] border-3 border-dashed border-slate-700 rounded-3xl p-10 text-center space-y-4">
-          <div className="w-20 h-20 rounded-full bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-4xl mx-auto text-cyan-300">
+        <div className="bg-[var(--bg-surface)] border-3 border-dashed border-[var(--border-strong)] rounded-3xl p-10 text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-cyan-100 dark:bg-cyan-400/20 border border-cyan-400/50 flex items-center justify-center text-4xl mx-auto text-cyan-600 dark:text-cyan-300">
             💬
           </div>
-          <h4 className="text-2xl font-black text-white">No Tutor Answer Ready Yet</h4>
-          <p className="text-base text-slate-300 max-w-md mx-auto">
+          <h4 className="text-2xl font-black text-[var(--text-primary)]">No Tutor Answer Ready Yet</h4>
+          <p className="text-base text-[var(--text-secondary)] max-w-md mx-auto">
             Ask a question in the Ask screen to have textbook explanations read aloud with synchronized highlight!
           </p>
           <GazeButton
@@ -162,19 +162,19 @@ export function ListenView({
       )}
 
       {/* 3. Audio & Voice Customization Section */}
-      <div className="bg-[#131f38] border-2 border-slate-700 rounded-3xl p-6 space-y-4">
-        <h4 className="text-lg font-black text-white flex items-center gap-2">
+      <div className="bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] rounded-3xl p-6 space-y-4">
+        <h4 className="text-lg font-black text-[var(--text-primary)] flex items-center gap-2">
           <span>⚙️</span> Speech Pacing & Voice Customization
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Speed Adjusters */}
-          <div className="bg-[#0d1527] p-4 rounded-2xl border border-slate-700 flex flex-col justify-between gap-3">
+          <div className="bg-[var(--bg-surface-raised)] p-4 rounded-2xl border border-[var(--border-strong)] flex flex-col justify-between gap-3">
             <div>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] block mb-1">
                 Speech Rate ({currentSpeed.toFixed(1)}x)
               </span>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-[var(--text-secondary)]">
                 Adjust speed for comfortable auditory comprehension.
               </p>
             </div>
@@ -201,12 +201,12 @@ export function ListenView({
           </div>
 
           {/* Voice Switcher */}
-          <div className="bg-[#0d1527] p-4 rounded-2xl border border-slate-700 flex flex-col justify-between gap-3">
+          <div className="bg-[var(--bg-surface-raised)] p-4 rounded-2xl border border-[var(--border-strong)] flex flex-col justify-between gap-3">
             <div>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-400 block mb-1">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] block mb-1">
                 Active English Voice
               </span>
-              <p className="text-xs text-amber-300 font-bold truncate">
+              <p className="text-xs text-amber-700 dark:text-amber-300 font-bold truncate">
                 {voiceDisplayName}
               </p>
             </div>

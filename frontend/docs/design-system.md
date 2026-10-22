@@ -38,16 +38,18 @@ All future contributors must follow these strict rules:
 
 ### Color Palette
 
-| Token | Calm (Default) | Light Theme | High Contrast | Usage |
+| Token | Light Theme (Default) | Calm (Dark Option) | High Contrast | Usage |
 | :--- | :--- | :--- | :--- | :--- |
-| `--bg-app` | `#070b14` (Deep Navy) | `#f8fafc` (Soft Off-White) | `#000000` (Pure Black) | Main viewport backdrop |
-| `--bg-surface` | `#0d1527` (Midnight) | `#ffffff` | `#000000` | Header, Bottom dock |
-| `--bg-card` | `#0b1120` (Dark Card) | `#ffffff` | `#000000` | Answer cards, dialogs |
-| `--accent-primary` | `#fbbf24` (Amber 400) | `#f59e0b` (Amber 500) | `#facc15` (Bright Yellow) | Primary gaze action |
-| `--teal-success` | `#10b981` (Emerald 500) | `#059669` | `#34d399` | Ready / Tracking status |
-| `--coral-warning` | `#fb7185` (Rose 400) | `#e11d48` | `#fda4af` | Caution / Low FPS |
-| `--text-primary` | `#f8fafc` | `#0f172a` | `#ffffff` | Headings and answers |
-| `--text-secondary`| `#94a3b8` | `#334155` | `#fef08a` | Subtitles and chips |
+| `--bg-app` | `#f1f5f9` (Soft Slate Canvas) | `#070b14` (Deep Navy) | `#000000` (Pure Black) | Main viewport backdrop |
+| `--bg-surface` | `#ffffff` (Pure White) | `#0d1527` (Midnight) | `#000000` | Header, Bottom dock, Cards |
+| `--bg-surface-raised` | `#f8fafc` (Slate 50) | `#131f38` (Navy Raised) | `#111111` | Status slots, inputs, tabs |
+| `--border-subtle` | `#e2e8f0` (Slate 200) | `#1e293b` (Slate 800) | `#facc15` | Card and section borders |
+| `--accent-primary` | `#f59e0b` (Amber 500) | `#fbbf24` (Amber 400) | `#facc15` (Bright Yellow) | Primary gaze action |
+| `--teal-success` | `#059669` (Emerald 600) | `#10b981` (Emerald 500) | `#34d399` | Ready / Tracking status |
+| `--coral-warning` | `#e11d48` (Rose 600) | `#fb7185` (Rose 400) | `#fda4af` | Caution / Error state |
+| `--text-primary` | `#0f172a` (Slate 900) | `#f8fafc` (Slate 50) | `#ffffff` | Headings and answers |
+| `--text-secondary`| `#334155` (Slate 700) | `#94a3b8` (Slate 400) | `#fef08a` | Subtitles and chips |
+| `--text-muted` | `#64748b` (Slate 500) | `#64748b` (Slate 500) | `#ffffff` | Helper and timestamp text |
 
 ### Spacing Scale (8px Grid)
 

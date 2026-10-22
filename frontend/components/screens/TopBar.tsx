@@ -102,7 +102,7 @@ export function TopBar({
   } · ${subject === "science" ? "Science" : "Social Science"}`;
 
   return (
-    <header className="h-16 w-full max-w-full border-b-2 border-slate-800 bg-[#0d1527] px-4 flex items-center justify-between gap-2 select-none flex-shrink-0 z-30 shadow-md overflow-clip">
+    <header className="h-16 w-full max-w-full border-b-2 border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 flex items-center justify-between gap-2 select-none flex-shrink-0 z-30 shadow-xs overflow-clip">
       {/* Left: Brand Logo, Title & Context Chip (Anchored strictly to left) */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="w-[190px] min-w-[190px] max-w-[190px] flex items-center gap-3 flex-shrink-0 overflow-hidden">
@@ -110,14 +110,14 @@ export function TopBar({
             <Sparkles className="w-5 h-5 text-slate-950 fill-current" />
           </div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-none">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text-primary)] leading-none">
               AI Tutor
             </h1>
             <div className="w-12 h-5 flex items-center flex-shrink-0">
               {isMockMode() && (
                 <span
                   id="demo-mode-badge"
-                  className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600/90 text-white border border-purple-400 inline-block"
+                  className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-600/90 dark:text-white dark:border-purple-400 inline-block"
                 >
                   Demo
                 </span>
@@ -130,11 +130,11 @@ export function TopBar({
           id="header-change-board-btn"
           onClick={onChangeBoardSubject}
           label={displayBoardSubject}
-          icon={<BookOpen className="w-4 h-4 text-amber-300" />}
+          icon={<BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-300" />}
           variant="card"
           size="compact"
           progressType="bar"
-          className="!h-10 !min-h-[40px] !w-[170px] !min-w-[170px] !max-w-[170px] !px-3 !py-1 text-xs font-bold text-amber-300 border-slate-700 hover:border-amber-400"
+          className="!h-10 !min-h-[40px] !w-[170px] !min-w-[170px] !max-w-[170px] !px-3 !py-1 text-xs font-bold text-amber-700 dark:text-amber-300 border-[var(--border-strong)] hover:border-amber-500"
         />
       </div>
 
@@ -189,8 +189,8 @@ export function TopBar({
           progressType="bar"
           className={`!h-10 !min-h-[40px] !w-[150px] !min-w-[150px] !max-w-[150px] !px-3 !py-1 text-xs font-extrabold ${
             isEyePaused
-              ? "!bg-amber-400 !text-slate-950 !border-amber-300"
-              : "text-slate-200 border-slate-700"
+              ? "!bg-amber-400 !text-slate-950 !border-amber-400"
+              : "text-[var(--text-primary)] border-[var(--border-strong)]"
           }`}
         />
 
@@ -203,7 +203,7 @@ export function TopBar({
           variant="card"
           size="compact"
           progressType="bar"
-          className="!h-10 !min-h-[40px] !w-[100px] !min-w-[100px] !max-w-[100px] !px-3 !py-1 text-xs font-bold border-slate-700 hover:border-amber-400"
+          className="!h-10 !min-h-[40px] !w-[100px] !min-w-[100px] !max-w-[100px] !px-3 !py-1 text-xs font-bold border-[var(--border-strong)] hover:border-amber-500"
         />
 
         {/* Privacy Panel Button */}
@@ -215,7 +215,7 @@ export function TopBar({
           variant="card"
           size="compact"
           progressType="bar"
-          className="!h-10 !min-h-[40px] !w-[96px] !min-w-[96px] !max-w-[96px] !px-3 !py-1 text-xs font-bold border-slate-700 hover:border-amber-400 hidden lg:inline-flex"
+          className="!h-10 !min-h-[40px] !w-[96px] !min-w-[96px] !max-w-[96px] !px-3 !py-1 text-xs font-bold border-[var(--border-strong)] hover:border-amber-500 hidden lg:inline-flex"
         />
 
         {/* Dev Tools Dropdown (Dev Only, NOT floating over content) */}
@@ -227,7 +227,7 @@ export function TopBar({
               onClick={() => setIsDevMenuOpen((prev) => !prev)}
               aria-label="Developer tools menu"
               title="Dev Tools"
-              className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-500/70 hover:bg-purple-900 text-purple-200 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
+              className="w-10 h-10 rounded-xl bg-purple-100 border border-purple-300 dark:bg-purple-950/80 dark:border-purple-500/70 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-800 dark:text-purple-200 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400"
             >
               <Wrench className="w-4 h-4" />
             </button>
@@ -235,9 +235,9 @@ export function TopBar({
             {isDevMenuOpen && (
               <div
                 id="dev-menu-dropdown"
-                className="absolute right-0 top-12 w-64 bg-[#0b1120] border-2 border-purple-500/80 rounded-2xl p-3 shadow-2xl z-50 space-y-2 text-xs"
+                className="absolute right-0 top-12 w-64 bg-[var(--bg-surface)] border-2 border-purple-400 rounded-2xl p-3 shadow-2xl z-50 space-y-2 text-xs"
               >
-                <div className="font-black text-purple-300 pb-1 border-b border-slate-800">
+                <div className="font-black text-purple-700 dark:text-purple-300 pb-1 border-b border-[var(--border-subtle)]">
                   Dev Diagnostics & Simulation
                 </div>
                 {onToggleSimGaze && (
@@ -248,10 +248,10 @@ export function TopBar({
                       onToggleSimGaze();
                       setIsDevMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl bg-[#0d1527] border border-slate-700 hover:border-purple-400 hover:bg-purple-950/50 flex items-center justify-between font-bold text-white cursor-pointer"
+                    className="w-full text-left px-3 py-2 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)] hover:border-purple-500 flex items-center justify-between font-bold text-[var(--text-primary)] cursor-pointer"
                   >
                     <span>Simulate Gaze (Mouse)</span>
-                    <span className={isSimGazeActive ? "text-emerald-400" : "text-slate-400"}>
+                    <span className={isSimGazeActive ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"}>
                       {isSimGazeActive ? "ON" : "OFF"}
                     </span>
                   </button>
@@ -264,10 +264,10 @@ export function TopBar({
                       onToggleStabilityMonitor();
                       setIsDevMenuOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl bg-[#0d1527] border border-slate-700 hover:border-purple-400 hover:bg-purple-950/50 flex items-center justify-between font-bold text-white cursor-pointer"
+                    className="w-full text-left px-3 py-2 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)] hover:border-purple-500 flex items-center justify-between font-bold text-[var(--text-primary)] cursor-pointer"
                   >
                     <span>Layout Stability Monitor</span>
-                    <span className={isStabilityMonitorOpen ? "text-emerald-400" : "text-slate-400"}>
+                    <span className={isStabilityMonitorOpen ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text-muted)]"}>
                       {isStabilityMonitorOpen ? "ON" : "OFF"}
                     </span>
                   </button>

@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS: GazeUiSettings = {
   isPaused: false,
   edgeScrollingEnabled: false,
   focusMode: false,
-  theme: "calm",
+  theme: "light",
   fontFamily: "lexend",
   textSize: "100%",
   lineSpacing: "normal",
@@ -127,12 +127,12 @@ export function GazeProvider({
       if (settings.highContrast || settings.theme === "high-contrast") {
         root.classList.add("high-contrast");
         root.setAttribute("data-theme", "high-contrast");
-      } else if (settings.theme === "light") {
-        root.classList.remove("high-contrast");
-        root.setAttribute("data-theme", "light");
-      } else {
+      } else if (settings.theme === "calm") {
         root.classList.remove("high-contrast");
         root.setAttribute("data-theme", "calm");
+      } else {
+        root.classList.remove("high-contrast");
+        root.setAttribute("data-theme", "light");
       }
 
       // Font family attribute

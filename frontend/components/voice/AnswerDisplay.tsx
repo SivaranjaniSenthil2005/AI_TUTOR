@@ -69,7 +69,7 @@ export function AnswerDisplay({
       {/* Mode Tag if specified */}
       {mode && (
         <div className="inline-block">
-          <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800 text-cyan-300 border border-slate-700">
+          <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--bg-surface-raised)] text-cyan-700 dark:text-cyan-300 border border-[var(--border-strong)]">
             Mode: {mode.replace(/_/g, " ")}
           </span>
         </div>
@@ -77,7 +77,7 @@ export function AnswerDisplay({
 
       {/* Low Grounding / Out-of-curriculum Notice */}
       {!grounded && !isStreaming && (
-        <div className="bg-amber-950/60 border-2 border-amber-500/80 rounded-2xl p-4 text-amber-200 text-sm flex items-start gap-3">
+        <div className="bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-500/80 rounded-2xl p-4 text-amber-900 dark:text-amber-200 text-sm flex items-start gap-3">
           <span className="text-xl" role="img" aria-label="Book Notice">
             📖
           </span>
@@ -85,7 +85,7 @@ export function AnswerDisplay({
             <p className="font-bold">
               I couldn&apos;t find this directly in your Class 10 textbook.
             </p>
-            <p className="text-xs text-amber-300/90 mt-0.5">
+            <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-0.5">
               The answer below is a general explanation. You may want to rephrase or verify with your syllabus.
             </p>
           </div>
@@ -96,8 +96,8 @@ export function AnswerDisplay({
       <div
         className={`text-base sm:text-lg leading-relaxed transition-colors ${
           isWholeBlockHighlighted
-            ? "bg-amber-400/20 text-white rounded-xl p-3 border-2 border-amber-400/60"
-            : "text-slate-100"
+            ? "bg-amber-400/20 text-[var(--text-primary)] rounded-xl p-3 border-2 border-amber-400/60"
+            : "text-[var(--text-primary)]"
         }`}
         aria-live="polite"
       >
@@ -131,7 +131,7 @@ export function AnswerDisplay({
 
       {/* Sources Toggle Button & Expandable List */}
       {sources.length > 0 && !isStreaming && (
-        <div className="pt-2 border-t border-slate-800/80 space-y-3">
+        <div className="pt-2 border-t border-[var(--border-subtle)] space-y-3">
           <div className="flex items-center gap-3">
             <GazeButton
               id="expand-sources-btn"
@@ -145,8 +145,8 @@ export function AnswerDisplay({
           </div>
 
           {showSourcesList && (
-            <div className="bg-[#070b14] border-2 border-slate-700 rounded-2xl p-4 space-y-3">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+            <div className="bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] rounded-2xl p-4 space-y-3">
+              <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
                 Textbook Citations
               </h4>
               <div className="space-y-2">
@@ -157,24 +157,24 @@ export function AnswerDisplay({
                       key={src.citation_index}
                       className={`p-3 rounded-xl border text-xs sm:text-sm transition-all ${
                         isSelected
-                          ? "bg-[#131f38] border-amber-400 text-white shadow-md"
-                          : "bg-[#0b1120] border-slate-800 text-slate-300"
+                          ? "bg-[var(--bg-surface)] border-amber-500 text-[var(--text-primary)] shadow-md"
+                          : "bg-[var(--bg-surface)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
                       }`}
                     >
-                      <div className="flex items-center justify-between font-bold text-amber-300 mb-1">
+                      <div className="flex items-center justify-between font-bold text-amber-700 dark:text-amber-300 mb-1">
                         <span>
                           [{src.citation_index}] {src.book_title}
                         </span>
-                        <span className="text-[11px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 border border-slate-700">
+                        <span className="text-[11px] bg-[var(--bg-surface-raised)] px-2 py-0.5 rounded text-[var(--text-muted)] border border-[var(--border-strong)]">
                           pp. {src.page_start}–{src.page_end}
                         </span>
                       </div>
-                      <p className="font-semibold text-slate-200">
+                      <p className="font-semibold text-[var(--text-primary)]">
                         {src.chapter_title}
                         {src.section_title ? ` • ${src.section_title}` : ""}
                       </p>
                       {src.text_snippet && (
-                        <p className="mt-1 text-slate-400 text-xs italic line-clamp-2">
+                        <p className="mt-1 text-[var(--text-muted)] text-xs italic line-clamp-2">
                           &ldquo;{src.text_snippet}&rdquo;
                         </p>
                       )}

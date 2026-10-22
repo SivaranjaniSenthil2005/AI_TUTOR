@@ -103,44 +103,44 @@ export const GazeButton = React.memo(function GazeButton({
   switch (variant) {
     case "accent":
       variantClasses =
-        "bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.25)] hover:bg-amber-300";
+        "bg-amber-400 text-slate-950 border-amber-500 shadow-sm hover:bg-amber-300";
       break;
     case "active":
       variantClasses =
-        "bg-amber-400 text-slate-950 border-amber-300 ring-4 ring-amber-400/40 font-black shadow-[0_0_24px_rgba(251,191,36,0.3)]";
+        "bg-amber-400 text-slate-950 border-amber-500 ring-4 ring-amber-400/50 font-black shadow-md";
       break;
     case "dock":
       variantClasses =
-        "bg-[#0d1527] text-white border-slate-700 hover:border-amber-400 hover:bg-[#131f38] shadow-md";
+        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
       break;
     case "danger":
       variantClasses =
-        "bg-rose-950/80 text-rose-100 border-rose-600 hover:bg-rose-900 shadow-md";
+        "bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-100 dark:border-rose-600 hover:bg-rose-100 shadow-xs";
       break;
     case "outline":
       variantClasses =
-        "bg-transparent text-slate-200 border-slate-700 hover:border-amber-400 hover:bg-slate-800/40";
+        "bg-transparent text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)]";
       break;
     case "card":
       variantClasses =
-        "bg-[#0b1120] text-white border-slate-700 hover:border-amber-400 hover:bg-[#131f38] shadow-md";
+        "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
       break;
     case "primary":
       variantClasses =
-        "bg-amber-400 text-slate-950 font-black border-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.35)] hover:bg-amber-300";
+        "bg-amber-400 text-slate-950 font-black border-amber-500 shadow-md hover:bg-amber-300";
       break;
     case "secondary":
     default:
       variantClasses =
-        "bg-[#0d1527] text-white border-slate-700 hover:border-slate-500 hover:bg-[#131f38]";
+        "bg-[var(--bg-surface)] text-[var(--text-primary)] border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface-raised)] shadow-xs";
       break;
   }
 
   // Dwell state visual feedback (ring, border highlight, glow - NO MOVEMENT)
   const dwellStateClasses = isFlashActive
-    ? "!bg-amber-300 !text-slate-950 !border-amber-100 ring-4 ring-amber-300/80 shadow-[0_0_30px_#fde047]"
+    ? "!bg-amber-300 !text-slate-950 !border-amber-400 ring-4 ring-amber-300/80 shadow-[0_0_24px_rgba(245,158,11,0.5)]"
     : isDwelling
-    ? "!border-amber-400 ring-4 ring-amber-400/50 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
+    ? "!border-amber-500 ring-4 ring-amber-400/50 shadow-[0_0_16px_rgba(245,158,11,0.35)]"
     : "";
 
   // Progress ring math
@@ -164,12 +164,12 @@ export const GazeButton = React.memo(function GazeButton({
       {/* Bottom dwell progress bar INSIDE button box */}
       {(progressType === "bar" || progressType === "both") && progress > 0 && (
         <div
-          className="absolute bottom-0 left-0 right-0 h-2 bg-slate-800/80 overflow-hidden rounded-b-[16px] pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-2 bg-slate-200/80 dark:bg-slate-800/80 overflow-hidden rounded-b-[16px] pointer-events-none"
           aria-hidden="true"
         >
           <div
             className={`h-full calm-fade ${
-              isGrace ? "bg-amber-500 animate-gentle-pulse" : "bg-amber-400"
+              isGrace ? "bg-amber-600 animate-gentle-pulse" : "bg-amber-500"
             }`}
             style={{ width: `${Math.round(progress * 100)}%` }}
           />
@@ -179,7 +179,7 @@ export const GazeButton = React.memo(function GazeButton({
       {/* Main Content: Icon and Label */}
       <div className="flex items-center gap-3.5 flex-1 text-left min-w-0 pointer-events-none">
         {icon && (
-          <div className="flex-shrink-0 flex items-center justify-center text-amber-300">
+          <div className="flex-shrink-0 flex items-center justify-center text-amber-600 dark:text-amber-300">
             {icon}
           </div>
         )}
@@ -190,7 +190,7 @@ export const GazeButton = React.memo(function GazeButton({
             </div>
           )}
           {subtitle && (
-            <p className="text-xs font-medium text-slate-400 line-clamp-1 mt-0.5 leading-snug">
+            <p className="text-xs font-semibold text-[var(--text-muted)] line-clamp-1 mt-0.5 leading-snug">
               {subtitle}
             </p>
           )}
@@ -201,7 +201,7 @@ export const GazeButton = React.memo(function GazeButton({
       {/* Right-hand side: Tag and Progress Ring */}
       <div className="flex items-center gap-2.5 flex-shrink-0 ml-3 pointer-events-none">
         {tag && (
-          <span className="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--bg-surface-raised)] text-[var(--text-accent)] border border-[var(--border-strong)]">
             {tag}
           </span>
         )}

@@ -31,22 +31,22 @@ export function StatusPill({
   }[variant];
 
   const textColor = {
-    success: "text-emerald-300",
-    warning: "text-amber-300",
-    danger: "text-rose-300",
-    neutral: "text-slate-300",
+    success: "text-emerald-700 dark:text-emerald-300",
+    warning: "text-amber-700 dark:text-amber-300",
+    danger: "text-rose-700 dark:text-rose-300",
+    neutral: "text-slate-700 dark:text-slate-300",
   }[variant];
 
   const content = (
     <div
       id={id}
       title={`${label}: ${value}`}
-      className={`h-8 px-2 rounded-xl bg-[#0d1527] border border-slate-700/80 flex items-center gap-1.5 select-none text-[11px] font-semibold w-[108px] min-w-[108px] max-w-[108px] flex-shrink-0 ${
-        onClick ? "cursor-pointer hover:border-slate-500" : ""
+      className={`h-8 px-2 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)] text-[var(--text-primary)] flex items-center gap-1.5 select-none text-[11px] font-semibold w-[108px] min-w-[108px] max-w-[108px] flex-shrink-0 ${
+        onClick ? "cursor-pointer hover:border-amber-500" : ""
       } ${className}`}
     >
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} aria-hidden="true" />
-      {icon && <span className="flex-shrink-0 text-slate-400 text-sm" aria-hidden="true">{icon}</span>}
+      {icon && <span className="flex-shrink-0 text-[var(--text-muted)] text-sm" aria-hidden="true">{icon}</span>}
       <span className="truncate flex-1 min-w-0 text-left">
         <span className={textColor}>{value}</span>
       </span>

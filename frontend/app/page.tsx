@@ -280,7 +280,7 @@ function HomeContent({
           <div
             className={`${
               isFocusMode ? "col-span-1" : "lg:col-span-8"
-            } h-full min-h-0 flex flex-col bg-[#0b1120] rounded-3xl border-2 border-slate-800 shadow-2xl overflow-hidden`}
+            } h-full min-h-0 flex flex-col bg-[var(--bg-surface)] rounded-3xl border-2 border-[var(--border-subtle)] shadow-md overflow-hidden`}
           >
             <AskView
               ref={askViewRef}

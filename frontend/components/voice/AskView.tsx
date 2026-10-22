@@ -506,11 +506,11 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
   return (
     <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden relative">
       {/* Top Header of Ask Area: Topic Context, New Topic, and Clear Chat */}
-      <div className="h-14 px-4 sm:px-6 border-b border-slate-800 bg-[#0d1527] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-300 truncate">
+      <div className="h-14 px-4 sm:px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-secondary)] truncate">
           <span>{boardName || board.toUpperCase()}</span>
           <span>•</span>
-          <span className="text-amber-300">{subjectName || subject}</span>
+          <span className="text-amber-700 dark:text-amber-300 font-extrabold">{subjectName || subject}</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -519,9 +519,9 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             type="button"
             onClick={handleNewTopic}
             disabled={!capabilities.canClearHistory}
-            className="h-9 px-3 rounded-xl bg-[#070b14] border border-slate-700 hover:border-amber-400 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+            className="h-9 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:border-amber-500 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-300" />
+            <RotateCcw className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
             <span className="hidden sm:inline">New Topic</span>
           </button>
           <button
@@ -529,7 +529,7 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             type="button"
             onClick={handleClearConversation}
             disabled={!capabilities.canClearHistory || messages.length === 0}
-            className="h-9 px-3 rounded-xl bg-[#070b14] border border-slate-700 hover:border-rose-400 text-slate-400 hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
+            className="h-9 px-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-strong)] hover:border-rose-400 text-[var(--text-muted)] hover:text-rose-600 dark:hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer calm-fade disabled:opacity-40"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Clear Chat</span>
@@ -538,7 +538,7 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
       </div>
 
       {/* Typed Question Bar (Always visible for direct typing and test reliability) */}
-      <div className="p-3 sm:p-4 border-b border-slate-800/80 bg-[#0b1120] flex-shrink-0">
+      <div className="p-3 sm:p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex-shrink-0">
         <form
           id="typed-question-form"
           onSubmit={handleTypedSubmit}
@@ -552,7 +552,7 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
             disabled={!capabilities.canType}
             onChange={(e) => setTypedInput(e.target.value)}
             placeholder={`Ask a question (e.g. What is photosynthesis?)...`}
-            className="flex-1 h-12 bg-[#070b14] border-2 border-slate-700 focus:border-amber-400 rounded-2xl px-4 text-base text-white placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-400/30 calm-fade disabled:opacity-50"
+            className="flex-1 h-12 bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] focus:border-amber-500 rounded-2xl px-4 text-base text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-4 focus:ring-amber-400/30 calm-fade disabled:opacity-50"
           />
           <button
             id="typed-question-submit-btn"
@@ -569,13 +569,13 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
       {session.state === "listening" && (
         <div
           id="voice-listening-card"
-          className="mx-4 sm:mx-6 my-3 p-4 rounded-2xl bg-amber-950/70 border-2 border-amber-400 text-center space-y-2 flex-shrink-0 calm-fade shadow-xl"
+          className="mx-4 sm:mx-6 my-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/70 border-2 border-amber-400 text-center space-y-2 flex-shrink-0 calm-fade shadow-md"
         >
-          <div className="flex items-center justify-center gap-2 text-amber-300 font-black text-sm uppercase tracking-wider">
+          <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300 font-black text-sm uppercase tracking-wider">
             <Mic className="w-5 h-5 animate-pulse" />
             <span>I am listening... Speak now</span>
           </div>
-          <p className="text-lg font-bold text-white min-h-[28px]">
+          <p className="text-lg font-bold text-[var(--text-primary)] min-h-[28px]">
             {stt.transcript || "Say your question..."}
           </p>
           <button
@@ -591,12 +591,12 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
       {session.state === "confirming" && (
         <div
           id="voice-confirmation-card"
-          className="mx-4 sm:mx-6 my-3 p-5 rounded-2xl bg-[#0d1527] border-4 border-amber-400 text-center space-y-4 flex-shrink-0 calm-fade shadow-2xl"
+          className="mx-4 sm:mx-6 my-3 p-5 rounded-2xl bg-[var(--bg-surface)] border-4 border-amber-400 text-center space-y-4 flex-shrink-0 calm-fade shadow-xl"
         >
-          <div className="text-xs font-black uppercase tracking-wider text-amber-300">
+          <div className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
             Did you say:
           </div>
-          <p className="text-xl sm:text-2xl font-black text-white">
+          <p className="text-xl sm:text-2xl font-black text-[var(--text-primary)]">
             &ldquo;{session.context.pendingVoiceTranscript || stt.transcript}&rdquo;
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
@@ -652,17 +652,17 @@ export const AskView = forwardRef<AskViewHandle, AskViewProps>(function AskView(
                 if (msg.role === "student") {
                   return (
                     <div key={msg.id} className="flex justify-end">
-                      <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-[#131f38] border-2 border-amber-400/50 shadow-md">
-                        <div className="text-xs font-black uppercase tracking-wider text-amber-300 mb-1.5 flex items-center justify-between gap-4">
+                      <div className="max-w-[75%] rounded-3xl p-5 sm:p-6 bg-amber-50 dark:bg-[#131f38] border-2 border-amber-300 dark:border-amber-400/50 shadow-sm">
+                        <div className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1.5 flex items-center justify-between gap-4">
                           <span>You</span>
-                          <span className="text-slate-400 font-normal">
+                          <span className="text-slate-500 dark:text-slate-400 font-normal">
                             {new Date(msg.timestamp).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
                           </span>
                         </div>
-                        <p className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
+                        <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-relaxed">
                           {msg.text}
                         </p>
                       </div>

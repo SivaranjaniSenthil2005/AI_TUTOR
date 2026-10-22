@@ -71,7 +71,7 @@ export function SettingsDrawer({
       {/* Top Section Nav Tabs */}
       <nav
         aria-label="Settings Categories"
-        className="grid grid-cols-5 gap-1.5 p-1.5 rounded-2xl bg-[#070b14] border-2 border-slate-800"
+        className="grid grid-cols-5 gap-1.5 p-1.5 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-subtle)]"
       >
         {navItems.map((tab) => {
           const isActive = tab.id === activeSection;
@@ -85,8 +85,8 @@ export function SettingsDrawer({
               }}
               className={`py-2 px-1 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 cursor-pointer calm-fade select-none border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 isActive
-                  ? "bg-amber-400 text-slate-950 border-amber-300 font-black shadow-md"
-                  : "bg-[#0d1527] text-slate-300 border-transparent hover:border-slate-700 hover:text-white"
+                  ? "bg-amber-500 text-white dark:text-slate-950 border-amber-400 font-black shadow-md"
+                  : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border-transparent hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
               }`}
             >
               <span aria-hidden="true">{tab.icon}</span>
@@ -112,7 +112,7 @@ export function SettingsDrawer({
           />
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Button Target Size</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Button Target Size</label>
             <SegmentedControl
               options={[
                 { value: "default", label: "Standard", subtitle: "88px buttons" },
@@ -123,34 +123,34 @@ export function SettingsDrawer({
             />
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#0b1120] border-2 border-slate-800 space-y-4">
+          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] space-y-4">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm font-bold text-slate-200">Show Eye Cursor Dot</span>
+              <span className="text-sm font-bold text-[var(--text-primary)]">Show Eye Cursor Dot</span>
               <input
                 type="checkbox"
                 checked={gazeSettings.showGazeDot}
                 onChange={(e) => updateGazeSettings({ showGazeDot: e.target.checked })}
-                className="w-6 h-6 accent-amber-400 rounded cursor-pointer"
+                className="w-6 h-6 accent-amber-500 rounded cursor-pointer"
               />
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800">
+            <label className="flex items-center justify-between cursor-pointer pt-3 border-t border-[var(--border-subtle)]">
               <div>
-                <span className="text-sm font-bold text-slate-200 block">Edge Scrolling (Opt-in)</span>
-                <span className="text-xs text-slate-400">Look at edges to scroll (buttons are recommended)</span>
+                <span className="text-sm font-bold text-[var(--text-primary)] block">Edge Scrolling (Opt-in)</span>
+                <span className="text-xs text-[var(--text-muted)]">Look at edges to scroll (buttons are recommended)</span>
               </div>
               <input
                 type="checkbox"
                 checked={!!gazeSettings.edgeScrollingEnabled}
                 onChange={(e) => updateGazeSettings({ edgeScrollingEnabled: e.target.checked })}
-                className="w-6 h-6 accent-amber-400 rounded cursor-pointer"
+                className="w-6 h-6 accent-amber-500 rounded cursor-pointer"
               />
             </label>
           </div>
 
           {/* Recalibrate and Set Center Actions */}
           <div className="space-y-3 pt-2">
-            <div className="text-xs font-black uppercase tracking-wider text-amber-300">
+            <div className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
               Accuracy & Calibration
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -161,7 +161,7 @@ export function SettingsDrawer({
                   onClose();
                   onOpenCalibration();
                 }}
-                className="h-14 px-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm flex items-center justify-center gap-2 border-2 border-amber-300 cursor-pointer calm-fade shadow"
+                className="h-14 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white dark:text-slate-950 font-black text-sm flex items-center justify-center gap-2 border-2 border-amber-400 cursor-pointer calm-fade shadow"
               >
                 <Target className="w-5 h-5" />
                 <span>Recalibrate Eyes</span>
@@ -175,9 +175,9 @@ export function SettingsDrawer({
                     onSetCenter();
                     onClose();
                   }}
-                  className="h-14 px-4 rounded-2xl bg-[#0d1527] hover:bg-[#131f38] text-white font-bold text-sm flex items-center justify-center gap-2 border-2 border-slate-700 hover:border-amber-400 cursor-pointer calm-fade"
+                  className="h-14 px-4 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-raised)] text-[var(--text-primary)] font-bold text-sm flex items-center justify-center gap-2 border-2 border-[var(--border-strong)] hover:border-amber-500 cursor-pointer calm-fade"
                 >
-                  <Crosshair className="w-5 h-5 text-amber-300" />
+                  <Crosshair className="w-5 h-5 text-amber-700 dark:text-amber-300" />
                   <span>Set Center Neutral</span>
                 </button>
               )}
@@ -202,12 +202,12 @@ export function SettingsDrawer({
           />
 
           {voices && voices.length > 0 && (
-            <div className="p-4 rounded-2xl bg-[#0b1120] border-2 border-slate-800 space-y-2">
-              <label className="text-sm font-bold text-slate-200 block">Choose Tutor Voice</label>
+            <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] space-y-2">
+              <label className="text-sm font-bold text-[var(--text-primary)] block">Choose Tutor Voice</label>
               <select
                 value={voiceSettings?.ttsVoiceURI || ""}
                 onChange={(e) => onUpdateVoiceSettings?.({ ttsVoiceURI: e.target.value })}
-                className="w-full h-12 px-3 rounded-xl bg-[#070b14] border-2 border-slate-700 text-slate-200 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="w-full h-12 px-3 rounded-xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] text-[var(--text-primary)] text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 {voices.map((v) => (
                   <option key={v.voiceURI} value={v.voiceURI}>
@@ -223,7 +223,7 @@ export function SettingsDrawer({
               id="settings-test-voice-btn"
               type="button"
               onClick={onTestVoice}
-              className="w-full h-14 rounded-2xl bg-[#0d1527] border-2 border-slate-700 hover:border-amber-400 text-amber-300 font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer calm-fade"
+              className="w-full h-14 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-strong)] hover:border-amber-500 text-amber-700 dark:text-amber-300 font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer calm-fade"
             >
               <Volume2 className="w-5 h-5" />
               <span>Test Voice Audio</span>
@@ -236,7 +236,7 @@ export function SettingsDrawer({
       {activeSection === "reading" && (
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Default Learning Mode</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Default Learning Mode</label>
             <SegmentedControl
               options={[
                 { value: "simple", label: "Simple", subtitle: "Clear & short" },
@@ -254,7 +254,7 @@ export function SettingsDrawer({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Reading Level</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Reading Level</label>
             <SegmentedControl
               options={[
                 { value: "easy", label: "Easy", subtitle: "Simple grade vocab" },
@@ -282,7 +282,7 @@ export function SettingsDrawer({
           />
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Reading Font</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Reading Font</label>
             <SegmentedControl
               options={[
                 { value: "lexend", label: "Lexend", subtitle: "Reading ease" },
@@ -299,7 +299,7 @@ export function SettingsDrawer({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Text Size</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Text Size</label>
             <SegmentedControl
               options={[
                 { value: "100%", label: "100%", subtitle: "Standard" },
@@ -317,7 +317,7 @@ export function SettingsDrawer({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Line Spacing</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Line Spacing</label>
             <SegmentedControl
               options={[
                 { value: "normal", label: "Normal" },
@@ -339,17 +339,17 @@ export function SettingsDrawer({
       {activeSection === "display" && (
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-200">Visual Theme</label>
+            <label className="text-sm font-bold text-[var(--text-primary)]">Visual Theme</label>
             <SegmentedControl
               options={[
+                { value: "light", label: "Light", subtitle: "Soft off-white (Standard)" },
                 { value: "calm", label: "Calm", subtitle: "Deep navy & amber" },
-                { value: "light", label: "Light", subtitle: "Soft off-white" },
                 { value: "high-contrast", label: "High Contrast", subtitle: "Pure black & yellow" },
               ]}
               value={
                 gazeSettings.highContrast
                   ? "high-contrast"
-                  : gazeSettings.theme || "calm"
+                  : gazeSettings.theme || "light"
               }
               onChange={(val) =>
                 updateGazeSettings({
@@ -361,11 +361,11 @@ export function SettingsDrawer({
           </div>
 
           {/* Focus Mode Toggle */}
-          <div className="p-4 rounded-2xl bg-[#0b1120] border-2 border-amber-400/50 space-y-2 shadow-[0_0_20px_rgba(251,191,36,0.1)]">
+          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-amber-500/50 space-y-2 shadow-sm">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <span className="text-base font-black text-amber-300 block">Focus Mode</span>
-                <span className="text-xs text-slate-300">
+                <span className="text-base font-black text-amber-700 dark:text-amber-300 block">Focus Mode</span>
+                <span className="text-xs text-[var(--text-muted)]">
                   Hides the camera preview and status chips so you can read without visual clutter.
                 </span>
               </div>
@@ -374,22 +374,22 @@ export function SettingsDrawer({
                 type="checkbox"
                 checked={!!gazeSettings.focusMode}
                 onChange={(e) => updateGazeSettings({ focusMode: e.target.checked })}
-                className="w-7 h-7 accent-amber-400 rounded cursor-pointer"
+                className="w-7 h-7 accent-amber-500 rounded cursor-pointer"
               />
             </label>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#0b1120] border-2 border-slate-800 space-y-4">
+          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] space-y-4">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <span className="text-sm font-bold text-slate-200 block">Reduced Motion</span>
-                <span className="text-xs text-slate-400">Disables animations and pulsing effects</span>
+                <span className="text-sm font-bold text-[var(--text-primary)] block">Reduced Motion</span>
+                <span className="text-xs text-[var(--text-muted)]">Disables animations and pulsing effects</span>
               </div>
               <input
                 type="checkbox"
                 checked={gazeSettings.reducedMotion}
                 onChange={(e) => updateGazeSettings({ reducedMotion: e.target.checked })}
-                className="w-6 h-6 accent-amber-400 rounded cursor-pointer"
+                className="w-6 h-6 accent-amber-500 rounded cursor-pointer"
               />
             </label>
           </div>
@@ -399,27 +399,27 @@ export function SettingsDrawer({
       {/* SECTION 5: PRIVACY */}
       {activeSection === "privacy" && (
         <div className="space-y-6">
-          <div className="p-5 rounded-2xl bg-[#0a1e17] border-2 border-emerald-500/50 space-y-3">
-            <div className="flex items-center gap-2.5 text-emerald-300 font-black text-base">
-              <Shield className="w-5 h-5 text-emerald-400" />
+          <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-[#0a1e17] border-2 border-emerald-500/50 space-y-3">
+            <div className="flex items-center gap-2.5 text-emerald-800 dark:text-emerald-300 font-black text-base">
+              <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <span>100% In-Browser Privacy</span>
             </div>
-            <p className="text-sm text-emerald-100 leading-relaxed">
+            <p className="text-sm text-emerald-950 dark:text-emerald-100 leading-relaxed">
               Eye landmarks are computed locally on your device via WebAssembly. Zero video frames, facial images, or biometric features are ever recorded, saved, or transmitted to any server.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#0b1120] border-2 border-slate-800 space-y-4">
+          <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] space-y-4">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <span className="text-sm font-bold text-slate-200 block">Remember Conversation</span>
-                <span className="text-xs text-slate-400">Save chat history in this browser</span>
+                <span className="text-sm font-bold text-[var(--text-primary)] block">Remember Conversation</span>
+                <span className="text-xs text-[var(--text-muted)]">Save chat history in this browser</span>
               </div>
               <input
                 type="checkbox"
                 checked={learnerSettings.rememberChat}
                 onChange={(e) => onUpdateLearnerSettings({ rememberChat: e.target.checked })}
-                className="w-6 h-6 accent-amber-400 rounded cursor-pointer"
+                className="w-6 h-6 accent-amber-500 rounded cursor-pointer"
               />
             </label>
 
@@ -428,7 +428,7 @@ export function SettingsDrawer({
                 id="settings-clear-chat-btn"
                 type="button"
                 onClick={onClearSavedChat}
-                className="w-full mt-3 h-12 rounded-xl bg-rose-950/80 border-2 border-rose-700 hover:bg-rose-900 text-rose-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer calm-fade"
+                className="w-full mt-3 h-12 rounded-xl bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-400 dark:border-rose-700 hover:bg-rose-200 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer calm-fade"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Clear Saved Conversation</span>

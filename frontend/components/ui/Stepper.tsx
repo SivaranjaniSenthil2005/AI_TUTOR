@@ -54,11 +54,11 @@ export function Stepper({
   return (
     <div
       id={id}
-      className={`p-4 rounded-2xl bg-[#0b1120] border-2 border-slate-800 flex flex-col gap-2.5 ${className}`}
+      className={`p-4 rounded-2xl bg-[var(--bg-surface)] border-2 border-[var(--border-subtle)] flex flex-col gap-2.5 ${className}`}
     >
       <div className="flex items-center justify-between">
-        <label className="text-sm font-bold text-slate-200">{label}</label>
-        {helperText && <span className="text-xs text-slate-400">{helperText}</span>}
+        <label className="text-sm font-bold text-[var(--text-primary)]">{label}</label>
+        {helperText && <span className="text-xs text-[var(--text-muted)]">{helperText}</span>}
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -68,14 +68,14 @@ export function Stepper({
           onClick={handleDecrease}
           disabled={!canDecrease}
           aria-label={`Decrease ${label}`}
-          className="w-14 h-14 rounded-2xl bg-[#0d1527] border-2 border-slate-700 hover:border-amber-400 hover:bg-[#131f38] text-white flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
+          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
         >
-          <Minus className="w-6 h-6 text-amber-300" />
+          <Minus className="w-6 h-6 text-amber-700 dark:text-amber-300" />
         </button>
 
         {/* Value Display in Center */}
-        <div className="flex-1 text-center py-2 px-4 rounded-xl bg-[#070b14] border border-slate-800/80">
-          <span className="text-2xl font-black text-amber-300 tracking-tight">
+        <div className="flex-1 text-center py-2 px-4 rounded-xl bg-[var(--bg-surface-raised)] border border-[var(--border-strong)]">
+          <span className="text-2xl font-black text-amber-700 dark:text-amber-300 tracking-tight">
             {displayString}
           </span>
         </div>
@@ -86,9 +86,9 @@ export function Stepper({
           onClick={handleIncrease}
           disabled={!canIncrease}
           aria-label={`Increase ${label}`}
-          className="w-14 h-14 rounded-2xl bg-[#0d1527] border-2 border-slate-700 hover:border-amber-400 hover:bg-[#131f38] text-white flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
+          className="w-14 h-14 rounded-2xl bg-[var(--bg-surface-raised)] border-2 border-[var(--border-strong)] hover:border-amber-500 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] flex items-center justify-center font-black select-none cursor-pointer calm-fade disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400"
         >
-          <Plus className="w-6 h-6 text-amber-300" />
+          <Plus className="w-6 h-6 text-amber-700 dark:text-amber-300" />
         </button>
       </div>
     </div>
